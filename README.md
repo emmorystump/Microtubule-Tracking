@@ -2,7 +2,8 @@
 CSE554 Final Project
 
 Notes:
-* Use OpenCV for video processing frame by frame
+* Use OpenCV for video processing frame by frame: 
+[import cv2]
 
 
 
