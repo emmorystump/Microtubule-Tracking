@@ -1,4 +1,4 @@
-# microtubule
+# Microtubule
 CSE554 Final Project
 
 Required Features:
