@@ -1,6 +1,11 @@
 # Microtubule
 CSE554 Final Project
 
+Notes:
+* Use OpenCV for video processing frame by frame
+
+
+
 Required Features:
 * Allow a user to upload a video
 * Ability to select a microtubule which the user would like to track by clicking on both ends of the microtubule
