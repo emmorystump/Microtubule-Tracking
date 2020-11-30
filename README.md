@@ -2,8 +2,13 @@
 CSE554 Final Project
 
 Notes:
-* Use OpenCV for video processing frame by frame: 
-[import cv2]
+* PIL & OpenCV for manipulating TIFF
+* GUI CLass
+    * Tkinter Library 
+    * Display the first image for user to click
+* DataLoader Class
+* TrackMicrotubuleAlg Class
+    * collect the array of new tiff images (edited to highlight the microtubule) and return them to the GUI for it to display
 
 
 
