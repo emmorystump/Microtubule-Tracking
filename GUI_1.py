@@ -57,7 +57,8 @@ class App:
         self.first_frame = self.vid.get_frame()[1]
         self.photo = ImageTk.PhotoImage(image=Image.fromarray(self.first_frame/255.))
         self.canvas.create_image(0, 0, image=self.photo, anchor=tk.NW)
-    
+        self.canvas_tracked.create_image(0, 0, image=self.photo, anchor=tk.NW)
+
         self.delay = 20
 
         # Bind click event to selecting a microtubule
