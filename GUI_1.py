@@ -4,10 +4,13 @@ from tkinter import *
 from tkinter import filedialog
 from PIL import Image, ImageTk, ImageDraw
 from cv2 import cv2
+import numpy as np
 
 # source: https://solarianprogrammer.com/2018/04/21/python-opencv-show-video-tkinter-window/
 class App:
     def __init__(self, window, window_title, video_source='microtubule_videos/1380 nM SPR1GFP WT - 13_XY1500063595_Z0_T000_C1.tiff'):
+        np.set_printoptions(threshold=np.inf)
+        
         self.window = window
         self.window.title(window_title)
         self.video_source = video_source
@@ -87,6 +90,7 @@ class App:
                 
                 # Initialize our trackig algorithm with our points
                 self.trackMicrotubule = TrackMicrotuble(self.microtubule_ends)
+                self.trackMicrotubule.initiateTracking(self.first_frame)
 
                 # Start the update function 
                 self.window.after(2000, self.update)
@@ -133,9 +137,12 @@ class TrackMicrotuble:
 
         # This will track every set of ends we have so we can analyze later
         self.endsArray = [self.ends]
+
+    def initiateTracking(self, first_frame):
+        print(first_frame)
     
     # This method takes our  frame and our ends, and isolates the microtubule with ends nearest to these clicks
-    def isolateMicrotubule(self, first_frame):
+    def isolateMicrotubule(self, curr_frame):
         print("To be Implemented")
 
     # For each frame, this method will use our current info and the next frame to determine our new end point set and line of best fit
