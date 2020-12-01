@@ -15,6 +15,8 @@ class App:
         self.title = tk.Label(window, text="Microtubule Tracker", font=("Courier", 30))
         self.title.pack(pady=4, padx=5)
 
+        self.allow_user_input = True
+
         self.load_btn = tk.Button(window, text="Load Data", relief="flat", bg="#6785d0", fg="white", font=("Courier", 12),
         width=20, height=2,command=self.show_file)
         self.load_btn.pack(pady=10, padx=5)
@@ -32,8 +34,9 @@ class App:
         self.window.mainloop()
 
     def update(self):
-        if self.vid.get_frame() != None:
-            ret, frame = self.vid.get_frame()
+        current_frame = self.vid.get_frame()
+        if current_frame != None:
+            ret, frame = current_frame
             if ret:
                 self.photo = ImageTk.PhotoImage(image=Image.fromarray(frame/255.))
                 self.canvas.create_image(0, 0, image=self.photo, anchor=tk.NW)
@@ -63,11 +66,13 @@ class App:
 
         # Bind click event to selecting a microtubule
         self.canvas.bind("<ButtonPress-1>", self.user_select_microtubule)
-        self.canvas.bind("<ButtonRelease-1>", self.user_select_microtubule)
+        # self.canvas.bind("<ButtonRelease-1>", self.user_select_microtubule)
       
     def user_select_microtubule(self, event):
         print(event)
-        self.update()
+        if self.allow_user_input:
+            self.allow_user_input = False
+            self.update()
 
 
 class SelectedVideo:
