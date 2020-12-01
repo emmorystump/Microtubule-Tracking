@@ -3,7 +3,7 @@ import tiffcapture as tc
 from tkinter import *
 from tkinter import filedialog
 from PIL import Image, ImageTk
-import cv2
+from cv2 import cv2
 
 # source: https://solarianprogrammer.com/2018/04/21/python-opencv-show-video-tkinter-window/
 class App:
@@ -51,10 +51,22 @@ class App:
         self.canvas.pack(pady=5, padx=15, side=tk.LEFT)
         self.canvas_tracked = tk.Canvas(self.window, width = self.vid.width, height = self.vid.height)
         self.canvas_tracked.pack(pady=10, padx=10, side=tk.LEFT)
+        self.canvas.pack()
+
+        # show the first frame of the video
+        self.first_frame = self.vid.get_frame()[1]
+        self.photo = ImageTk.PhotoImage(image=Image.fromarray(self.first_frame/255.))
+        self.canvas.create_image(0, 0, image=self.photo, anchor=tk.NW)
     
         self.delay = 20
-        self.update()
+
+        # Bind click event to selecting a microtubule
+        self.canvas.bind("<ButtonPress-1>", self.user_select_microtubule)
+        self.canvas.bind("<ButtonRelease-1>", self.user_select_microtubule)
       
+    def user_select_microtubule(self, event):
+        print(event)
+        self.update()
 
 
 class SelectedVideo:
