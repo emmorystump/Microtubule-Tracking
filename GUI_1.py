@@ -15,6 +15,9 @@ class App:
         self.title = tk.Label(window, text="Microtubule Tracker", font=("Courier", 30))
         self.title.pack(pady=4, padx=5)
 
+        self.user_prompt = tk.Label(window, text="Please select a microtubule video file and then select both ends of a microtubule to begin.", font=("Courier", 14))
+        self.user_prompt.pack(pady=4, padx=5)
+
         self.allow_user_input = True
         self.number_user_clicks = 0
         self.microtubule_ends = []
@@ -22,16 +25,6 @@ class App:
         self.load_btn = tk.Button(window, text="Load Data", relief="flat", bg="#6785d0", fg="white", font=("Courier", 12),
         width=20, height=2,command=self.show_file)
         self.load_btn.pack(pady=10, padx=5)
-
-        
-        # open video source
-        # self.vid = SelectedVideo(self.video_source)
-        # Create a canvas that can fit the above video source size
-        # self.canvas = tk.Canvas(window, width = self.vid.width, height = self.vid.height)
-        # self.canvas.pack()
-    
-        # self.delay = 15
-        # self.update()
 
         self.window.mainloop()
 
@@ -52,6 +45,7 @@ class App:
     def show_file(self):
         self.video_source = filedialog.askopenfilename()
         self.vid = SelectedVideo(self.video_source)
+
         self.canvas = tk.Canvas(self.window, width = self.vid.width, height = self.vid.height)
         self.canvas.pack(pady=5, padx=15, side=tk.LEFT)
         self.canvas_tracked = tk.Canvas(self.window, width = self.vid.width, height = self.vid.height)
