@@ -2,7 +2,7 @@ import tkinter as tk
 import tiffcapture as tc
 from tkinter import *
 from tkinter import filedialog
-from PIL import Image, ImageTk
+from PIL import Image, ImageTk, ImageDraw
 from cv2 import cv2
 
 # source: https://solarianprogrammer.com/2018/04/21/python-opencv-show-video-tkinter-window/
@@ -63,25 +63,31 @@ class App:
         self.photo = ImageTk.PhotoImage(image=Image.fromarray(self.first_frame/255.))
         self.canvas.create_image(0, 0, image=self.photo, anchor=tk.NW)
         self.canvas_tracked.create_image(0, 0, image=self.photo, anchor=tk.NW)
-
         self.delay = 20
 
         # Bind click event to selecting a microtubule
         self.canvas.bind("<ButtonPress-1>", self.user_select_microtubule)
         # self.canvas.bind("<ButtonRelease-1>", self.user_select_microtubule)
-      
+
     def user_select_microtubule(self, event):
 
         if self.allow_user_input:
             self.microtubule_ends.append([event.x, event.y])
             self.number_user_clicks += 1
-            
+
+            self.canvas.create_oval(event.x+5, event.y+5, event.x-5, event.y-5, fill="blue", outline="#DDD", width=1)
+            self.canvas_tracked.create_oval(event.x+5, event.y+5, event.x-5, event.y-5, fill="blue", outline="#DDD", width=1)
+
+
             # If the user has now selected 2 points, do not allow them to select anymore
             if self.number_user_clicks == 2:
                 self.allow_user_input = False
                 self.number_user_clicks = 0
                 print(self.microtubule_ends)
-                self.update()
+
+                self.window.after(200, self.update)
+                # Probably want a play button that will cause this to happen
+                # self.update()
             
 
 
