@@ -84,8 +84,11 @@ class App:
 
                 self.allow_user_input = False
                 self.number_user_clicks = 0
-                print(self.microtubule_ends)
+                
+                # Initialize our trackig algorithm with our points
+                self.trackMicrotubule = TrackMicrotuble(self.microtubule_ends)
 
+                # Start the update function 
                 self.window.after(2000, self.update)
                 
                 # Probably want a play button that will cause this to happen
@@ -124,11 +127,22 @@ class SelectedVideo:
 
 
 class TrackMicrotuble:
-    def __init__(self, points, frames):
-        self.points = points
-        self.frames = frames
-        print("hiya")
-        print(self.points)
+    def __init__(self, ends):
+        # Update these with every frame
+        self.ends = ends
+
+        # This will track every set of ends we have so we can analyze later
+        self.endsArray = [self.ends]
+    
+    # This method takes our  frame and our ends, and isolates the microtubule with ends nearest to these clicks
+    def isolateMicrotubule(self, first_frame):
+        print("To be Implemented")
+
+    # For each frame, this method will use our current info and the next frame to determine our new end point set and line of best fit
+    def traceMicrotubule(self, current_frame):
+        print("To be Implemented")
+
+
         
 
 if __name__ == "__main__":  
