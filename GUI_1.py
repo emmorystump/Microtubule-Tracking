@@ -87,6 +87,7 @@ class App:
                 print(self.microtubule_ends)
 
                 self.window.after(2000, self.update)
+                
                 # Probably want a play button that will cause this to happen
                 # self.update()
             
@@ -120,7 +121,14 @@ class SelectedVideo:
                 return (False, None)
         except Exception:
             pass
-    
+
+
+class TrackMicrotuble:
+    def __init__(self, points, frames):
+        self.points = points
+        self.frames = frames
+        print("hiya")
+        print(self.points)
         
 
 if __name__ == "__main__":  
