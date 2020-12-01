@@ -16,6 +16,8 @@ class App:
         self.title.pack(pady=4, padx=5)
 
         self.allow_user_input = True
+        self.number_user_clicks = 0
+        self.microtubule_ends = []
 
         self.load_btn = tk.Button(window, text="Load Data", relief="flat", bg="#6785d0", fg="white", font=("Courier", 12),
         width=20, height=2,command=self.show_file)
@@ -69,10 +71,18 @@ class App:
         # self.canvas.bind("<ButtonRelease-1>", self.user_select_microtubule)
       
     def user_select_microtubule(self, event):
-        print(event)
+
         if self.allow_user_input:
-            self.allow_user_input = False
-            self.update()
+            self.microtubule_ends.append([event.x, event.y])
+            self.number_user_clicks += 1
+            
+            # If the user has now selected 2 points, do not allow them to select anymore
+            if self.number_user_clicks == 2:
+                self.allow_user_input = False
+                self.number_user_clicks = 0
+                print(self.microtubule_ends)
+                self.update()
+            
 
 
 class SelectedVideo:
