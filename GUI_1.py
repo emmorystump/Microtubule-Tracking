@@ -81,11 +81,18 @@ class App:
 
             # If the user has now selected 2 points, do not allow them to select anymore
             if self.number_user_clicks == 2:
+                self.x0 = self.microtubule_ends[0][0]
+                self.y0 = self.microtubule_ends[0][1]
+                self.x1 = self.microtubule_ends[1][0]
+                self.y1 = self.microtubule_ends[1][1]
+
+                self.canvas_tracked.create_line(self.x0, self.y0, self.x1, self.y1, fill="blue", width=3)
+
                 self.allow_user_input = False
                 self.number_user_clicks = 0
                 print(self.microtubule_ends)
 
-                self.window.after(200, self.update)
+                self.window.after(2000, self.update)
                 # Probably want a play button that will cause this to happen
                 # self.update()
             
