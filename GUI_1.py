@@ -37,6 +37,8 @@ class App:
             if ret:
                 self.photo = ImageTk.PhotoImage(image=Image.fromarray(frame/255.))
                 self.canvas.create_image(0, 0, image=self.photo, anchor=tk.NW)
+                self.canvas_tracked.create_image(0, 0, image=self.photo, anchor=tk.NW)
+
                 self.vid.frame_counter += 1
                 print(self.vid.frame_counter)
                 self.window.after(self.delay, self.update)
@@ -46,7 +48,9 @@ class App:
         self.video_source = filedialog.askopenfilename()
         self.vid = SelectedVideo(self.video_source)
         self.canvas = tk.Canvas(self.window, width = self.vid.width, height = self.vid.height)
-        self.canvas.pack()
+        self.canvas.pack(pady=5, padx=15, side=tk.LEFT)
+        self.canvas_tracked = tk.Canvas(self.window, width = self.vid.width, height = self.vid.height)
+        self.canvas_tracked.pack(pady=10, padx=10, side=tk.LEFT)
     
         self.delay = 20
         self.update()
