@@ -48,7 +48,6 @@ class App:
                 self.canvas_tracked.create_image(0, 0, image=self.photo, anchor=tk.NW)
 
                 self.vid.frame_counter += 1
-                print(self.vid.frame_counter)
                 # https://stackoverflow.com/questions/54472997/video-player-by-python-tkinter-when-i-pause-video-i-cannot-re-play
             if not self.pause:
                 self.after_id = self.window.after(self.delay, self.update)
@@ -77,14 +76,17 @@ class App:
 
         # show the first frame of the video
         self.first_frame = self.vid.get_frame()[1]
-        self.photo = ImageTk.PhotoImage(image=Image.fromarray(self.first_frame/255.))
+
+        # Test thresholding frame here
+        self.first_frame = self.first_frame/255.
+
+        self.photo = ImageTk.PhotoImage(image=Image.fromarray(self.first_frame))
         self.canvas.create_image(0, 0, image=self.photo, anchor=tk.NW)
         self.canvas_tracked.create_image(0, 0, image=self.photo, anchor=tk.NW)
         self.delay = 20
 
         # Bind click event to selecting a microtubule
         self.canvas.bind("<ButtonPress-1>", self.user_select_microtubule)
-        # self.canvas.bind("<ButtonRelease-1>", self.user_select_microtubule)
 
     def user_select_microtubule(self, event):
 
@@ -115,8 +117,6 @@ class App:
                 # Start the update function 
                 self.window.after(2000, self.update)
                 
-                # Probably want a play button that will cause this to happen
-                # self.update()
             
     def play_video(self):
         if self.allow_user_input == False:
@@ -173,7 +173,18 @@ class TrackMicrotuble:
         self.endsArray = [self.ends]
 
     def initiateTracking(self, first_frame):
-        print(first_frame)
+        x0 = self.ends[0][0]
+        y0 = self.ends[0][1]
+        x1 = self.ends[1][0]
+        y1 = self.ends[1][1]
+
+        # This is the slope and b-value of the line that point1 and point2 create
+        slope = (y1-y0)/(x1-x0)
+        b = y0 - (slope*x0)
+
+        # This is the pixel distance between point 1 and point 2
+        length_line = np.sqrt((x1-x0)**2 + (y1-y0)**2)
+        
     
     # This method takes our  frame and our ends, and isolates the microtubule with ends nearest to these clicks
     def isolateMicrotubule(self, curr_frame):
