@@ -29,7 +29,7 @@ class App:
         
           # Play, pause, restart
 
-        self.load_btn = tk.Button(window, text="Load Data", relief="flat", bg="#6785d0", fg="white", font=("Courier", 12),
+        self.load_btn = tk.Button(window, text="Load Data", relief="flat", bg="#6785d0", fg="gray", font=("Courier", 12),
         width=20, height=2,command=self.show_file)
         self.load_btn.pack(pady=2, padx=5)
 
@@ -60,9 +60,9 @@ class App:
         self.video_source = filedialog.askopenfilename()
         self.vid = SelectedVideo(self.video_source)
 
-        self.play_btn = Button(self.window, text="Play", command=self.play_video, relief="flat", bg="#696969", fg="white", font=("Courier", 12),width=20, height=2)
+        self.play_btn = Button(self.window, text="Play", command=self.play_video, relief="flat", bg="#696969", fg="gray", font=("Courier", 12),width=20, height=2)
         self.play_btn.pack(pady=1, padx=5)
-        self.pause_btn = Button(self.window, text="Pause", command=self.pause_video,  relief="flat", bg="#696969", fg="white", font=("Courier", 12),width=20, height=2)
+        self.pause_btn = Button(self.window, text="Pause", command=self.pause_video,  relief="flat", bg="#696969", fg="gray", font=("Courier", 12),width=20, height=2)
         self.pause_btn.pack(pady=1, padx=10)
         # self.restart_btn = Button(self.window, text="Restart", command=self.restart_video)
         # self.restart_btn.pack(pady=5, padx=5, side=tk.LEFT)
@@ -119,11 +119,12 @@ class App:
                 # self.update()
             
     def play_video(self):
-        if self.pause:
-            self.pause = False
-            self.update()
-        else:
-            self.update()
+        if self.allow_user_input == False:
+            if self.pause:
+                self.pause = False
+                self.update()
+            else:
+                self.update()
             
     def pause_video(self):           
         self.pause = True
