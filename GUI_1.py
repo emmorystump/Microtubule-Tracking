@@ -13,6 +13,8 @@ class App:
         
         self.window = window
         self.window.title(window_title)
+        self.window_height = 1000
+        self.window_width = 2000
         self.video_source = video_source
 
         self.title = tk.Label(window, text="Microtubule Tracker", font=("Courier", 30))
@@ -24,10 +26,15 @@ class App:
         self.allow_user_input = True
         self.number_user_clicks = 0
         self.microtubule_ends = []
+        
+          # Play, pause, restart
 
         self.load_btn = tk.Button(window, text="Load Data", relief="flat", bg="#6785d0", fg="white", font=("Courier", 12),
         width=20, height=2,command=self.show_file)
-        self.load_btn.pack(pady=10, padx=5)
+        self.load_btn.pack(pady=2, padx=5)
+
+        self.pause = False
+        self.after_id = 0
 
         self.window.mainloop()
 
@@ -42,18 +49,31 @@ class App:
 
                 self.vid.frame_counter += 1
                 print(self.vid.frame_counter)
-                self.window.after(self.delay, self.update)
+                # https://stackoverflow.com/questions/54472997/video-player-by-python-tkinter-when-i-pause-video-i-cannot-re-play
+            if not self.pause:
+                self.after_id = self.window.after(self.delay, self.update)
+            if self.pause:
+                self.window.after_cancel(self.after_id)
         
     
     def show_file(self):
         self.video_source = filedialog.askopenfilename()
         self.vid = SelectedVideo(self.video_source)
 
+        self.play_btn = Button(self.window, text="Play", command=self.play_video, relief="flat", bg="#696969", fg="white", font=("Courier", 12),width=20, height=2)
+        self.play_btn.pack(pady=1, padx=5)
+        self.pause_btn = Button(self.window, text="Pause", command=self.pause_video,  relief="flat", bg="#696969", fg="white", font=("Courier", 12),width=20, height=2)
+        self.pause_btn.pack(pady=1, padx=10)
+        # self.restart_btn = Button(self.window, text="Restart", command=self.restart_video)
+        # self.restart_btn.pack(pady=5, padx=5, side=tk.LEFT)
+
+
         self.canvas = tk.Canvas(self.window, width = self.vid.width, height = self.vid.height)
-        self.canvas.pack(pady=5, padx=15, side=tk.LEFT)
+        self.canvas.pack(pady=5, padx=200, side=tk.LEFT)
         self.canvas_tracked = tk.Canvas(self.window, width = self.vid.width, height = self.vid.height)
-        self.canvas_tracked.pack(pady=10, padx=10, side=tk.LEFT)
+        self.canvas_tracked.pack(pady=5, padx=210, side=tk.LEFT)
         self.canvas.pack()
+
 
         # show the first frame of the video
         self.first_frame = self.vid.get_frame()[1]
@@ -98,6 +118,18 @@ class App:
                 # Probably want a play button that will cause this to happen
                 # self.update()
             
+    def play_video(self):
+        if self.pause:
+            self.pause = False
+            self.update()
+        else:
+            self.update()
+            
+    def pause_video(self):           
+        self.pause = True
+    
+    # def restart_video(self):
+    #     return
 
 
 class SelectedVideo:
@@ -107,7 +139,7 @@ class SelectedVideo:
         if not self.vid.isOpened():
             raise ValueError("Unable to open video source", video_source)
         self.vid_copy = cv2.VideoCapture(video_source)
-   
+        self.end = False
         # Get video source width and height
         self.width = self.vid_copy.get(cv2.CAP_PROP_FRAME_WIDTH)
         self.height = self.vid_copy.get(cv2.CAP_PROP_FRAME_HEIGHT)
@@ -127,6 +159,7 @@ class SelectedVideo:
             else:
                 return (False, None)
         except Exception:
+            self.end = True
             pass
 
 
@@ -154,7 +187,7 @@ class TrackMicrotuble:
 
 if __name__ == "__main__":  
     root = tk.Tk()
-    root.geometry("1080x700")
+    root.geometry("2000x1000")
     App(root, "Test Video")
 
 
