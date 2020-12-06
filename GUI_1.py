@@ -84,27 +84,22 @@ class App:
     
         # self.first_frame = cv2.GaussianBlur(self.first_frame,(5,5),0)
 
-        self.first_frame = cv2.adaptiveThreshold(self.first_frame, self.first_frame.max(), cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2)
-        # print(self.first_frame)
+        self.first_frame = cv2.adaptiveThreshold(self.first_frame, self.first_frame.max(), cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 10, -10)
+        # self.first_frame = cv2.adaptiveThreshold(self.first_frame, self.first_frame.max(), cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2)
 
-        kernel = np.ones((4, 4), np.uint8)
+        kernel = np.ones((3, 3), np.uint8)
         kernel2 = np.ones((2, 2), np.uint8)
-        
-        self.first_frame = cv2.morphologyEx(self.first_frame, cv2.MORPH_CLOSE, kernel)
+
+        # self.first_frame = cv2.morphologyEx(self.first_frame, cv2.MORPH_CLOSE, kernel)
         self.first_frame = cv2.erode(self.first_frame, kernel2,iterations = 1)
         # self.first_frame = cv2.morphologyEx(self.first_frame, cv2.MORPH_OPEN, kernel)
 
-        self.first_frame[self.first_frame==255] = 1
-        self.first_frame[self.first_frame==0] = 255
-        self.first_frame[self.first_frame==1] = 0
+        # self.first_frame[self.first_frame==255] = 1
+        # self.first_frame[self.first_frame==0] = 255
+        # self.first_frame[self.first_frame==1] = 0
 
         num_labels, labels_im, stats, centroids = cv2.connectedComponentsWithStats(self.first_frame, 8, cv2.CV_32S)
         print(num_labels)
-
-        # self.imshow_components(labels_im)
-
-        # test = cv2.connectedComponentsWithStats(self.first_frame, 4, cv2.CV_32S)
-        # cv2.imshow("image", test)
 
         self.photo = ImageTk.PhotoImage(image=Image.fromarray(self.first_frame))
         self.canvas.create_image(0, 0, image=self.photo, anchor=tk.NW)
@@ -113,21 +108,6 @@ class App:
 
         # Bind click event to selecting a microtubule
         self.canvas.bind("<ButtonPress-1>", self.user_select_microtubule)
-
-    def imshow_components(self, labels):
-        # Map component labels to hue val
-        label_hue = np.uint8(179*labels/np.max(labels))
-        blank_ch = 255*np.ones_like(label_hue)
-        labeled_img = cv2.merge([label_hue, blank_ch, blank_ch])
-
-        # cvt to BGR for display
-        labeled_img = cv2.cvtColor(labeled_img, cv2.COLOR_HSV2BGR)
-
-        # set bg label to black
-        labeled_img[label_hue==0] = 0
-
-        cv2.imshow('labeled.png', labeled_img)
-        cv2.waitKey()
 
 
     def user_select_microtubule(self, event):
