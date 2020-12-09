@@ -129,11 +129,14 @@ class App:
         self.canvas_tracked.create_image(0, 0, image=self.photo_tracked, anchor=tk.NW)
         self.delay = 20
 
+        self.trackingAlg(label)
+
 
     
-    def trackingAlg(self):
+    def trackingAlg(self, label):
         trackMicrotubule = TrackMicrotuble(self.microtubule_ends)
-        round_endpoints = trackMicrotubule.initiateTracking(self.photo_tracked)
+        segmented_photo_tracked = trackMicrotubule.initiateTracking(self.first_frame, label, self.canvas_tracked)
+        self.canvas_tracked.create_image(0, 0, image=ImageTk.PhotoImage(image=Image.fromarray(segmented_photo_tracked)), anchor=tk.NW)
 
     def user_select_microtubule(self, event):
 
@@ -156,10 +159,6 @@ class App:
 
                 self.allow_user_input = False
                 self.number_user_clicks = 0
-                
-                # Initialize our trackig algorithm with our points
-                self.trackMicrotubule = TrackMicrotuble(self.microtubule_ends)
-                self.trackMicrotubule.initiateTracking(self.first_frame)
 
                 # Start the update function 
                 # self.window.after(2000, self.update)
@@ -220,7 +219,7 @@ class TrackMicrotuble:
         # This will track every set of ends we have so we can analyze later
         self.endsArray = [self.ends]
 
-    def initiateTracking(self, first_frame):
+    def initiateTracking(self, first_frame, photo_tracked, canvas_tracked):
         x0 = self.ends[0][0]
         y0 = self.ends[0][1]
         x1 = self.ends[1][0]
@@ -231,9 +230,32 @@ class TrackMicrotuble:
         self.b = y0 - (self.slope*x0)
 
         # use this information to find the endpoints of the line
+        testx1 = 0
+        testy1 = self.slope * testx1 +self.b
 
+        testx2 = 400
+        testy2 = self.slope * testx2 + self.b
+
+        canvas_tracked.create_line(testx1, testy1, testx2, testy2, fill="blue", width=3)
+
+        # plug in all white pixels into our line equation, if the y value is significantly different than its actual y value, we get rid of it
+        object_indices = np.where(photo_tracked != 0)
+        thresh_value = 5
+
+        for i in range(len(object_indices[0])):
+            x_actual = object_indices[0][i]
+            y_calculated = self.slope * x_actual + self.b
+            y_actual = object_indices[1][i]
+
+            difference = np.abs(y_calculated-y_actual)
+            print(difference)
+
+            if(difference >= thresh_value):
+                photo_tracked[y_actual][x_actual] = 0
+            else:
+                photo_tracked[y_actual][x_actual] = 255
         # return found endpoints
-        return
+        return photo_tracked
         
 
 if __name__ == "__main__":  
