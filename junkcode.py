@@ -24,3 +24,36 @@
 
         # test = cv2.connectedComponentsWithStats(self.first_frame, 4, cv2.CV_32S)
         # cv2.imshow("image", test)
+
+
+        # pixel1 = self.first_frame[self.x0][self.y0]
+        # pixel2 = self.first_frame[self.x1][self.y1]
+
+        # pixel1_mean = self.first_frame[self.x0 - 3 : self.x0 + 3, self.y0 - 3 : self.y0 + 3].mean()
+        # pixel2_mean = self.first_frame[self.x1 - 5 : self.x1 + 5, self.y1 - 5 : self.y1 + 5].mean()
+
+
+        # threshold_val = pixel1+10
+
+        # # second argument = threshold value, third argument = value to be given if pixel value is more than the threshold value
+        # print(threshold_val)
+        # ret, self.first_frame = cv2.threshold(self.first_frame, threshold_val, 255, cv2.THRESH_BINARY)
+
+
+#     def imshow_components(self, labels):
+#         # Map component labels to hue val
+#         label_hue = np.uint8(179*labels/np.max(labels))
+#         blank_ch = 255*np.ones_like(label_hue)
+#         labeled_img = cv2.merge([label_hue, blank_ch, blank_ch])
+
+#         # cvt to BGR for display
+#         labeled_img = cv2.cvtColor(labeled_img, cv2.COLOR_HSV2BGR)
+
+#         # set bg label to black
+#         labeled_img[label_hue==0] = 0
+
+#         cv2.imshow('labeled.png', labeled_img)
+#         cv2.waitKey()
+
+        # This is the pixel distance between point 1 and point 2
+        # length_line = np.sqrt((x1-x0)**2 + (y1-y0)**2)

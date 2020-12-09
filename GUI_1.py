@@ -107,41 +107,33 @@ class App:
     def displayMicrotubule(self):
         self.first_frame = np.array(self.first_frame)
 
-        pixel1 = self.first_frame[self.x0][self.y0]
-        pixel2 = self.first_frame[self.x1][self.y1]
-
-        pixel1_mean = self.first_frame[self.x0 - 5 : self.x0 + 5, self.y0 - 5 : self.y0 + 5].mean()
-        pixel2_mean = self.first_frame[self.x1 - 5 : self.x1 + 5, self.y1 - 5 : self.y1 + 5].mean()
+        self.first_frame = cv2.adaptiveThreshold(self.first_frame, self.first_frame.max(), cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 15, -2)
 
 
-        threshold_val = (pixel1_mean + pixel2_mean)/2
+        self.first_frame[self.first_frame==255] = 1
+        self.first_frame[self.first_frame==0] = 255
+        self.first_frame[self.first_frame==1] = 0
 
-        # second argument = threshold value, third argument = value to be given if pixel value is more than the threshold value
-        print(threshold_val)
-        ret, self.first_frame = cv2.threshold(self.first_frame, threshold_val, 255, cv2.THRESH_BINARY)
+        _, label = cv2.connectedComponents(self.first_frame)
 
-        self.photo = ImageTk.PhotoImage(image=Image.fromarray(self.first_frame))
+        print(label)
+        componentNumber = label[self.y0 - 2: self.y0 + 2, self.x0 - 2:self.x0 + 2].max()
+
+        print(label[self.y0 - 2: self.y0 + 2, self.x0 - 2:self.x0 + 2].max())
+        label[label != componentNumber] = 0
+
+        self.photo_tracked = ImageTk.PhotoImage(image=Image.fromarray(label))
+        
         self.canvas.create_image(0, 0, image=self.photo, anchor=tk.NW)
-        self.canvas_tracked.create_image(0, 0, image=self.photo, anchor=tk.NW)
+        
+        self.canvas_tracked.create_image(0, 0, image=self.photo_tracked, anchor=tk.NW)
         self.delay = 20
 
 
-    def imshow_components(self, labels):
-        # Map component labels to hue val
-        label_hue = np.uint8(179*labels/np.max(labels))
-        blank_ch = 255*np.ones_like(label_hue)
-        labeled_img = cv2.merge([label_hue, blank_ch, blank_ch])
-
-        # cvt to BGR for display
-        labeled_img = cv2.cvtColor(labeled_img, cv2.COLOR_HSV2BGR)
-
-        # set bg label to black
-        labeled_img[label_hue==0] = 0
-
-        cv2.imshow('labeled.png', labeled_img)
-        cv2.waitKey()
-
     
+    def trackingAlg(self):
+        trackMicrotubule = TrackMicrotuble(self.microtubule_ends)
+        round_endpoints = trackMicrotubule.initiateTracking(self.photo_tracked)
 
     def user_select_microtubule(self, event):
 
@@ -235,22 +227,13 @@ class TrackMicrotuble:
         y1 = self.ends[1][1]
 
         # This is the slope and b-value of the line that point1 and point2 create
-        slope = (y1-y0)/(x1-x0)
-        b = y0 - (slope*x0)
+        self.slope = (y1-y0)/(x1-x0)
+        self.b = y0 - (self.slope*x0)
 
-        # This is the pixel distance between point 1 and point 2
-        length_line = np.sqrt((x1-x0)**2 + (y1-y0)**2)
-        
-    
-    # This method takes our  frame and our ends, and isolates the microtubule with ends nearest to these clicks
-    def isolateMicrotubule(self, curr_frame):
-        print("To be Implemented")
+        # use this information to find the endpoints of the line
 
-    # For each frame, this method will use our current info and the next frame to determine our new end point set and line of best fit
-    def traceMicrotubule(self, current_frame):
-        print("To be Implemented")
-
-
+        # return found endpoints
+        return
         
 
 if __name__ == "__main__":  
