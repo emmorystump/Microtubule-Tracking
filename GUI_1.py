@@ -2,9 +2,10 @@ import tkinter as tk
 import tiffcapture as tc
 from tkinter import *
 from tkinter import filedialog
-from PIL import Image, ImageTk, ImageDraw
+from PIL import Image, ImageTk, ImageDraw, ImageEnhance
 from cv2 import cv2
 import numpy as np
+import math
 
 # source: https://solarianprogrammer.com/2018/04/21/python-opencv-show-video-tkinter-window/
 class App:
@@ -77,32 +78,25 @@ class App:
         # show the first frame of the video
         self.first_frame = self.vid.get_frame()[1]
 
-        # Test thresholding frame here
-        self.first_frame = self.first_frame/255.
+        # Normalizing our image
+        self.first_frame = self.first_frame/255
         self.first_frame[self.first_frame > 255] = 255
+
+        self.first_frame = cv2.GaussianBlur(self.first_frame,(3,3),5)
+
+
+        # Converts it to a type we can threshold with
         self.first_frame = self.first_frame.astype(np.uint8)
+
+        testIm = Image.fromarray(np.uint8(self.first_frame))
+        enh = ImageEnhance.Contrast(testIm)
+        contrast = 3.5
+        self.first_frame = enh.enhance(contrast)
     
-        # self.first_frame = cv2.GaussianBlur(self.first_frame,(5,5),0)
-
-        self.first_frame = cv2.adaptiveThreshold(self.first_frame, self.first_frame.max(), cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 15, -10)
-        # self.first_frame = cv2.adaptiveThreshold(self.first_frame, self.first_frame.max(), cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2)
-
-        kernel = np.ones((3, 3), np.uint8)
-        kernel2 = np.ones((2, 2), np.uint8)
-
-        # self.first_frame = cv2.morphologyEx(self.first_frame, cv2.MORPH_CLOSE, kernel)
-        # self.first_frame = cv2.erode(self.first_frame, kernel2,iterations = 2)
-        # self.first_frame = cv2.morphologyEx(self.first_frame, cv2.MORPH_OPEN, kernel)
-
-        # self.first_frame[self.first_frame==255] = 1
-        # self.first_frame[self.first_frame==0] = 255
-        # self.first_frame[self.first_frame==1] = 0
-
-        num_labels, labels_im, stats, centroids = cv2.connectedComponentsWithStats(self.first_frame, 8, cv2.CV_32S)
-        print(num_labels)
 
 
-        self.photo = ImageTk.PhotoImage(image=Image.fromarray(self.first_frame))
+        self.photo = ImageTk.PhotoImage(image=self.first_frame)
+
         self.canvas.create_image(0, 0, image=self.photo, anchor=tk.NW)
         self.canvas_tracked.create_image(0, 0, image=self.photo, anchor=tk.NW)
         self.delay = 20
@@ -110,6 +104,44 @@ class App:
         # Bind click event to selecting a microtubule
         self.canvas.bind("<ButtonPress-1>", self.user_select_microtubule)
 
+    def displayMicrotubule(self):
+        self.first_frame = np.array(self.first_frame)
+
+        pixel1 = self.first_frame[self.x0][self.y0]
+        pixel2 = self.first_frame[self.x1][self.y1]
+
+        pixel1_mean = self.first_frame[self.x0 - 5 : self.x0 + 5, self.y0 - 5 : self.y0 + 5].mean()
+        pixel2_mean = self.first_frame[self.x1 - 5 : self.x1 + 5, self.y1 - 5 : self.y1 + 5].mean()
+
+
+        threshold_val = (pixel1_mean + pixel2_mean)/2
+
+        # second argument = threshold value, third argument = value to be given if pixel value is more than the threshold value
+        print(threshold_val)
+        ret, self.first_frame = cv2.threshold(self.first_frame, threshold_val, 255, cv2.THRESH_BINARY)
+
+        self.photo = ImageTk.PhotoImage(image=Image.fromarray(self.first_frame))
+        self.canvas.create_image(0, 0, image=self.photo, anchor=tk.NW)
+        self.canvas_tracked.create_image(0, 0, image=self.photo, anchor=tk.NW)
+        self.delay = 20
+
+
+    def imshow_components(self, labels):
+        # Map component labels to hue val
+        label_hue = np.uint8(179*labels/np.max(labels))
+        blank_ch = 255*np.ones_like(label_hue)
+        labeled_img = cv2.merge([label_hue, blank_ch, blank_ch])
+
+        # cvt to BGR for display
+        labeled_img = cv2.cvtColor(labeled_img, cv2.COLOR_HSV2BGR)
+
+        # set bg label to black
+        labeled_img[label_hue==0] = 0
+
+        cv2.imshow('labeled.png', labeled_img)
+        cv2.waitKey()
+
+    
 
     def user_select_microtubule(self, event):
 
@@ -138,7 +170,8 @@ class App:
                 self.trackMicrotubule.initiateTracking(self.first_frame)
 
                 # Start the update function 
-                self.window.after(2000, self.update)
+                # self.window.after(2000, self.update)
+                self.window.after(2000, self.displayMicrotubule)
                 
             
     def play_video(self):
