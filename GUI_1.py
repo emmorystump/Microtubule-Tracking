@@ -45,7 +45,8 @@ class App:
         if current_frame != None:
             ret, frame = current_frame
             if ret:
-                self.photo = ImageTk.PhotoImage(image=Image.fromarray(frame/255.))
+                frame = self.process_frame(frame)
+                self.photo = ImageTk.PhotoImage(image=frame)
                 self.canvas.create_image(0, 0, image=self.photo, anchor=tk.NW)
                 self.canvas_tracked.create_image(0, 0, image=self.photo, anchor=tk.NW)
                 self.vid.frame_counter += 1
@@ -72,27 +73,10 @@ class App:
         self.canvas_tracked = tk.Canvas(self.window, width = self.vid.width, height = self.vid.height)
         self.canvas_tracked.pack(pady=5, padx=210, side=tk.LEFT)
         self.canvas.pack()
-
-
-        # show the first frame of the video
+        
         self.first_frame = self.vid.get_frame()[1]
-
-        # Normalizing our image
-        self.first_frame = self.first_frame/255
-        self.first_frame[self.first_frame > 255] = 255
-
-        self.first_frame = cv2.GaussianBlur(self.first_frame,(3,3),5)
-
-
-        # Converts it to a type we can threshold with
-        self.first_frame = self.first_frame.astype(np.uint8)
-
-        first_frame_img = Image.fromarray(np.uint8(self.first_frame))
-        first_frame_enhanced = ImageEnhance.Contrast(first_frame_img)
-        contrast = 3.5
-        self.first_frame = first_frame_enhanced.enhance(contrast)
-
-
+        self.first_frame = self.process_frame(self.first_frame)
+        
         self.photo = ImageTk.PhotoImage(image=self.first_frame)
 
         self.canvas.create_image(0, 0, image=self.photo, anchor=tk.NW)
@@ -102,27 +86,44 @@ class App:
         # Bind click event to selecting a microtubule
         self.canvas.bind("<ButtonPress-1>", self.user_select_microtubule)
 
-    def display_selected_microtubule(self):
-        self.first_frame = np.array(self.first_frame)
-        self.first_frame = cv2.adaptiveThreshold(self.first_frame, self.first_frame.max(), cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 15, -2)
 
-        self.first_frame[self.first_frame==255] = 1
-        self.first_frame[self.first_frame==0] = 255
-        self.first_frame[self.first_frame==1] = 0
+    def process_frame(self, frame):
 
-        _, label = cv2.connectedComponents(self.first_frame)
-        # print(label)
+        # Normalizing our image
+        frame = frame/255
+        frame[frame > 255] = 255
+
+        # Gaussian blur
+        frame = cv2.GaussianBlur(frame,(3,3),5)
+
+        # Convert to a type we can threshold with
+        frame = frame.astype(np.uint8)
+
+        # Convert to image
+        first_frame_img = Image.fromarray(np.uint8(frame))
+        first_frame_enhanced = ImageEnhance.Contrast(first_frame_img)
+
+        # Enhance contrast
+        contrast = 3.5
+        frame = first_frame_enhanced.enhance(contrast)
+        
+        return frame
+
+    def display_selected_microtubule(self, frame):
+        frame = np.array(frame)
+        frame = cv2.adaptiveThreshold(frame, frame.max(), cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 15, -2)
+
+        frame[frame==255] = 1
+        frame[frame==0] = 255
+        frame[frame==1] = 0
+
+        _, label = cv2.connectedComponents(frame)
+
         componentNumber = label[self.y0 - 2: self.y0 + 2, self.x0 - 2:self.x0 + 2].max()
 
-        # print(label[self.y0 - 2: self.y0 + 2, self.x0 - 2:self.x0 + 2].max())
         label[label != componentNumber] = 0
 
-        self.photo_tracked = ImageTk.PhotoImage(image=Image.fromarray(label))        
-        self.canvas.create_image(0, 0, image=self.photo, anchor=tk.NW)       
-        self.canvas_tracked.create_image(0, 0, image=self.photo_tracked, anchor=tk.NW)
-        self.delay = 20
-
-        self.track(label)
+        return label
 
     def track(self, label):
         trackMicrotubule = TrackMicrotuble(self.microtubule_ends)
@@ -155,7 +156,15 @@ class App:
 
                 # Start the update function 
                 # self.window.after(2000, self.update)
-                self.window.after(2000, self.display_selected_microtubule)
+
+                labeled = self.display_selected_microtubule(self.first_frame)
+                self.photo_tracked = ImageTk.PhotoImage(image=Image.fromarray(labeled))        
+                self.canvas.create_image(0, 0, image=self.photo, anchor=tk.NW)       
+                self.canvas_tracked.create_image(0, 0, image=self.photo_tracked, anchor=tk.NW)
+                self.delay = 20
+
+                self.track(labeled)
+                # self.window.after(2000, self.display_selected_microtubule)
                 
     def reset(self):
         self.canvas.destroy()
@@ -164,8 +173,7 @@ class App:
         self.pause_btn.destroy()
         self.reset_btn.destroy()
         self.allow_user_input = True
-
-            
+           
     def play_video(self):
         if self.allow_user_input == False:
             if self.pause:
@@ -253,7 +261,7 @@ class TrackMicrotuble:
         thresh_std = np.std(difference_all)
         thresh_value = thresh_value - 0.5*thresh_std
         print(thresh_value)
-        
+
         # Use mean of all differencces as threshold value, then threshold the tracked binary image
         for i in range(len(object_indices[0])):
             difference = difference_all[i]
@@ -263,7 +271,6 @@ class TrackMicrotuble:
             if difference > thresh_value:
                 photo_tracked[y_actual][x_actual] = 0
             
-          
         # return thresholded image
         return photo_tracked
         
