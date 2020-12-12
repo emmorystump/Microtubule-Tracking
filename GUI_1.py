@@ -164,6 +164,7 @@ class App:
         self.pause_btn.destroy()
         self.reset_btn.destroy()
         self.allow_user_input = True
+
             
     def play_video(self):
         if self.allow_user_input == False:
@@ -249,14 +250,19 @@ class TrackMicrotuble:
             difference = np.abs(y_calculated-y_actual)
             difference_all.append(difference)
         thresh_value = np.mean(difference_all)
+        thresh_std = np.std(difference_all)
+        thresh_value = thresh_value - 0.5*thresh_std
+        print(thresh_value)
+        
         # Use mean of all differencces as threshold value, then threshold the tracked binary image
         for i in range(len(object_indices[0])):
             difference = difference_all[i]
             x_actual = object_indices[1][i]
             y_calculated = self.slope * x_actual + self.b
             y_actual = object_indices[0][i]
-            if difference >= thresh_value:
+            if difference > thresh_value:
                 photo_tracked[y_actual][x_actual] = 0
+            
           
         # return thresholded image
         return photo_tracked
