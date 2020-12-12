@@ -28,7 +28,7 @@ class App:
         self.number_user_clicks = 0
         self.microtubule_ends = []
         
-          # Play, pause, restart
+        # Play, pause, restart
 
         self.load_btn = tk.Button(window, text="Load Data", relief="flat", bg="#6785d0", fg="gray", font=("Courier", 12),
         width=20, height=2,command=self.show_file)
@@ -36,6 +36,7 @@ class App:
 
         self.pause = False
         self.after_id = 0
+
 
         self.window.mainloop()
 
@@ -47,14 +48,13 @@ class App:
                 self.photo = ImageTk.PhotoImage(image=Image.fromarray(frame/255.))
                 self.canvas.create_image(0, 0, image=self.photo, anchor=tk.NW)
                 self.canvas_tracked.create_image(0, 0, image=self.photo, anchor=tk.NW)
-
                 self.vid.frame_counter += 1
                 # https://stackoverflow.com/questions/54472997/video-player-by-python-tkinter-when-i-pause-video-i-cannot-re-play
             if not self.pause:
                 self.after_id = self.window.after(self.delay, self.update)
             if self.pause:
                 self.window.after_cancel(self.after_id)
-        
+    
     
     def show_file(self):
         self.video_source = filedialog.askopenfilename()
@@ -64,9 +64,8 @@ class App:
         self.play_btn.pack(pady=1, padx=5)
         self.pause_btn = Button(self.window, text="Pause", command=self.pause_video,  relief="flat", bg="#696969", fg="gray", font=("Courier", 12),width=20, height=2)
         self.pause_btn.pack(pady=1, padx=10)
-        # self.restart_btn = Button(self.window, text="Restart", command=self.restart_video)
-        # self.restart_btn.pack(pady=5, padx=5, side=tk.LEFT)
-
+        self.reset_btn = Button(self.window, text="Reset", command=self.reset,  relief="flat", bg="#696969", fg="gray", font=("Courier", 12),width=20, height=2)
+        self.reset_btn.pack(pady=1, padx=15)
 
         self.canvas = tk.Canvas(self.window, width = self.vid.width, height = self.vid.height)
         self.canvas.pack(pady=5, padx=200, side=tk.LEFT)
@@ -88,11 +87,10 @@ class App:
         # Converts it to a type we can threshold with
         self.first_frame = self.first_frame.astype(np.uint8)
 
-        testIm = Image.fromarray(np.uint8(self.first_frame))
-        enh = ImageEnhance.Contrast(testIm)
+        first_frame_img = Image.fromarray(np.uint8(self.first_frame))
+        first_frame_enhanced = ImageEnhance.Contrast(first_frame_img)
         contrast = 3.5
-        self.first_frame = enh.enhance(contrast)
-    
+        self.first_frame = first_frame_enhanced.enhance(contrast)
 
 
         self.photo = ImageTk.PhotoImage(image=self.first_frame)
@@ -104,39 +102,34 @@ class App:
         # Bind click event to selecting a microtubule
         self.canvas.bind("<ButtonPress-1>", self.user_select_microtubule)
 
-    def displayMicrotubule(self):
+    def display_selected_microtubule(self):
         self.first_frame = np.array(self.first_frame)
-
         self.first_frame = cv2.adaptiveThreshold(self.first_frame, self.first_frame.max(), cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 15, -2)
-
 
         self.first_frame[self.first_frame==255] = 1
         self.first_frame[self.first_frame==0] = 255
         self.first_frame[self.first_frame==1] = 0
 
         _, label = cv2.connectedComponents(self.first_frame)
-
-        print(label)
+        # print(label)
         componentNumber = label[self.y0 - 2: self.y0 + 2, self.x0 - 2:self.x0 + 2].max()
 
-        print(label[self.y0 - 2: self.y0 + 2, self.x0 - 2:self.x0 + 2].max())
+        # print(label[self.y0 - 2: self.y0 + 2, self.x0 - 2:self.x0 + 2].max())
         label[label != componentNumber] = 0
 
-        self.photo_tracked = ImageTk.PhotoImage(image=Image.fromarray(label))
-        
-        self.canvas.create_image(0, 0, image=self.photo, anchor=tk.NW)
-        
+        self.photo_tracked = ImageTk.PhotoImage(image=Image.fromarray(label))        
+        self.canvas.create_image(0, 0, image=self.photo, anchor=tk.NW)       
         self.canvas_tracked.create_image(0, 0, image=self.photo_tracked, anchor=tk.NW)
         self.delay = 20
 
-        self.trackingAlg(label)
+        self.track(label)
 
-
-    
-    def trackingAlg(self, label):
+    def track(self, label):
         trackMicrotubule = TrackMicrotuble(self.microtubule_ends)
         segmented_photo_tracked = trackMicrotubule.initiateTracking(self.first_frame, label, self.canvas_tracked)
-        self.canvas_tracked.create_image(0, 0, image=ImageTk.PhotoImage(image=Image.fromarray(segmented_photo_tracked)), anchor=tk.NW)
+       
+        self.photo_tracked = ImageTk.PhotoImage(image=Image.fromarray(segmented_photo_tracked))
+        self.canvas_tracked.create_image(0, 0, image=self.photo_tracked, anchor=tk.NW)
 
     def user_select_microtubule(self, event):
 
@@ -162,8 +155,15 @@ class App:
 
                 # Start the update function 
                 # self.window.after(2000, self.update)
-                self.window.after(2000, self.displayMicrotubule)
+                self.window.after(2000, self.display_selected_microtubule)
                 
+    def reset(self):
+        self.canvas.destroy()
+        self.canvas_tracked.destroy()
+        self.play_btn.destroy()
+        self.pause_btn.destroy()
+        self.reset_btn.destroy()
+        self.allow_user_input = True
             
     def play_video(self):
         if self.allow_user_input == False:
@@ -176,8 +176,6 @@ class App:
     def pause_video(self):           
         self.pause = True
     
-    # def restart_video(self):
-    #     return
 
 
 class SelectedVideo:
@@ -240,21 +238,27 @@ class TrackMicrotuble:
 
         # plug in all white pixels into our line equation, if the y value is significantly different than its actual y value, we get rid of it
         object_indices = np.where(photo_tracked != 0)
-        thresh_value = 5
+        difference_all = []
 
+        # Get all y differences
         for i in range(len(object_indices[0])):
-            x_actual = object_indices[0][i]
+            x_actual = object_indices[1][i]
             y_calculated = self.slope * x_actual + self.b
-            y_actual = object_indices[1][i]
+            y_actual = object_indices[0][i]
 
             difference = np.abs(y_calculated-y_actual)
-            print(difference)
-
-            if(difference >= thresh_value):
+            difference_all.append(difference)
+        thresh_value = np.mean(difference_all)
+        # Use mean of all differencces as threshold value, then threshold the tracked binary image
+        for i in range(len(object_indices[0])):
+            difference = difference_all[i]
+            x_actual = object_indices[1][i]
+            y_calculated = self.slope * x_actual + self.b
+            y_actual = object_indices[0][i]
+            if difference >= thresh_value:
                 photo_tracked[y_actual][x_actual] = 0
-            else:
-                photo_tracked[y_actual][x_actual] = 255
-        # return found endpoints
+          
+        # return thresholded image
         return photo_tracked
         
 
