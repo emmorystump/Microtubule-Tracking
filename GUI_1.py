@@ -48,9 +48,12 @@ class App:
         current_frame = self.vid.get_frame()
 
         # If it is not the end of the video, return True
+        if current_frame == None:
+            print("We done")
         if current_frame != None:
             ret, frame = current_frame
             
+            print(ret)
             # If it is true
             if ret:
 
@@ -76,15 +79,16 @@ class App:
                 print(self.vid.frame_counter)
 
                 # https://stackoverflow.com/questions/54472997/video-player-by-python-tkinter-when-i-pause-video-i-cannot-re-play
-            if self.nextFrame:
-                self.pause = True
-                self.nextFrame= False
-                print("in here")
+            # if self.nextFrame:
+            #     self.pause = True
+            #     self.nextFrame= False
+            #     print("in here")
             
             if not self.pause:
                 self.after_id = self.window.after(self.delay, self.update)
-            if self.pause:
-                self.window.after_cancel(self.after_id)
+            # if self.pause:
+            #     print(self.after_id)
+            #     self.window.after_cancel(self.after_id)
     
     
     def show_file(self):
@@ -114,7 +118,7 @@ class App:
 
         self.canvas.create_image(0, 0, image=self.photo, anchor=tk.NW)
         self.canvas_tracked.create_image(0, 0, image=self.photo, anchor=tk.NW)
-        self.delay = 2000
+        self.delay = 20
 
         # Bind click event to selecting a microtubule
         self.canvas.bind("<ButtonPress-1>", self.user_select_microtubule)
@@ -255,8 +259,8 @@ class App:
     
     def play_next_frame(self):
         print("in here 2")
-        self.nextFrame = True
-        self.pause = False
+        # self.nextFrame = True
+        self.pause = True
         self.update()
 
     def pause_video(self):           
@@ -344,7 +348,7 @@ class Microtuble:
             y_calculated = self.slope * x_actual + self.b
             y_actual = object_indices[0][i]
             if difference > thresh_value:
-                photo_tracked[y_actual][x_actual] = 0
+                photo_tracked[x_actual][y_actual] = 0
         new_object_indices = np.where(photo_tracked!=0)
         self.update_endpoints(new_object_indices)
 
@@ -361,6 +365,7 @@ class Microtuble:
         return photo_tracked, self.ends, self.ends_notTransposed
 
     def update_endpoints(self, points):
+        print("in update endpoints")
         max_square_distance = 0
         max_pair = []
         points = np.transpose(points)
