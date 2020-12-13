@@ -71,7 +71,7 @@ class App:
                 self.canvas.create_oval(self.component_number_x+5, self.component_number_y+5, self.component_number_x-5, self.component_number_y-5, fill="red", outline="#DDD", width=1)
 
                 # track the microtubule
-                self.photo_tracked, self.microtubule_ends_transposed, self.microtubule_ends = self.microtubule.track(labeled)
+                self.photo_tracked, self.microtubule_ends, self.microtubule_ends_transposed = self.microtubule.track(labeled)
                 self.photo_tracked = ImageTk.PhotoImage(image=Image.fromarray(self.photo_tracked))
                 self.canvas_tracked.create_image(0, 0, image=self.photo_tracked, anchor=tk.NW)
 
@@ -167,13 +167,14 @@ class App:
         frame[frame==0] = 255
         frame[frame==1] = 0
 
+        frame = np.transpose(frame)
         # Get all connected components of the frame 
         _, label = cv2.connectedComponents(frame)
 
         self.component_number_x = math.floor((self.x0 + self.x1)/2)
         self.component_number_y = math.floor((self.y0 + self.y1)/2)
         # Get the component number of our microtubule (This line needs to be changed)
-        componentNumber = label[self.component_number_y - 4: self.component_number_y + 4, self.component_number_x - 4:self.component_number_x + 4].max()
+        componentNumber = label[self.component_number_x - 4: self.component_number_x + 4, self.component_number_y - 4:self.component_number_y + 4].max()
 
         # Set everything that is not this component number to be the background
         label[label != componentNumber] = 0
@@ -182,19 +183,30 @@ class App:
 
     def initiate_track(self, label):
 
+        x0 = self.microtubule_ends[0][0]
+        y0 = self.microtubule_ends[0][1]
+        x1 = self.microtubule_ends[1][0]
+        y1 = self.microtubule_ends[1][1]
+
+        self.slope = (y1-y0)/(x1-x0)
+        print(self.slope)
+        self.b = y0 - (self.slope*x0)
+        print(self.b)
+
         # Initiate track microtubule
-        self.microtubule = Microtuble(self.microtubule_ends)
+        self.microtubule = Microtuble(self.microtubule_ends, self.slope, self.b)
 
         # Compute the ends given the user entered ends
         segmented_photo_tracked, computed_ends, computed_ends_notTransposed = self.microtubule.track(label)
 
         # set our microtubule ends to the computed ends
-        self.microtubule_ends = computed_ends_notTransposed
+        self.microtubule_ends = computed_ends
+
 
         # Show a line with these computed ends
         self.photo_tracked = ImageTk.PhotoImage(image=Image.fromarray(segmented_photo_tracked))
         self.canvas_tracked.create_image(0, 0, image=self.photo_tracked, anchor=tk.NW)
-        self.canvas.create_line(computed_ends[0][1], computed_ends[0][0], computed_ends[1][1], computed_ends[1][0], fill="blue", width=3)
+        self.canvas.create_line(computed_ends[0][0], computed_ends[0][1], computed_ends[1][0], computed_ends[1][1], fill="blue", width=3)
     
 
     def user_select_microtubule(self, event):
@@ -225,7 +237,9 @@ class App:
                 print(self.microtubule_ends)
 
                 # Create a line on the canvas
-                self.canvas_tracked.create_line(self.x0, self.y0, self.x1, self.y1, fill="blue", width=3)
+                print("in user select micro")
+                print(self.microtubule_ends)
+                self.canvas_tracked.create_line(self.x0, self.y0, self.x1, self.y1, fill="red", width=3)
 
                 # Disallow user input
                 self.allow_user_input = False
@@ -302,24 +316,16 @@ class SelectedVideo:
 
 
 class Microtuble:
-    def __init__(self, ends):
+    def __init__(self, ends, slope, b):
         # Update these with every frame
         self.ends = ends
+        self.slope = slope
+        self.b = b
 
         # This will track every set of ends we have so we can analyze later
         self.endsArray = [self.ends]
 
     def track(self, photo_tracked):
-
-        # Define the ends (non-transposed) of our image
-        x0 = self.ends[0][0]
-        y0 = self.ends[0][1]
-        x1 = self.ends[1][0]
-        y1 = self.ends[1][1]
-
-        # This is the slope and b-value of the line that point1 and point2 create
-        self.slope = (y1-y0)/(x1-x0)
-        self.b = y0 - (self.slope*x0)
 
         # plug in all white pixels into our line equation, if the y value is significantly different than its actual y value, we get rid of it
         object_indices = np.where(photo_tracked != 0)
@@ -327,9 +333,9 @@ class Microtuble:
 
         # Get all y differences
         for i in range(len(object_indices[0])):
-            x_actual = object_indices[1][i]
+            x_actual = object_indices[0][i]
             y_calculated = self.slope * x_actual + self.b
-            y_actual = object_indices[0][i]
+            y_actual = object_indices[1][i]
 
             difference = np.abs(y_calculated-y_actual)
             difference_all.append(difference)
@@ -344,9 +350,9 @@ class Microtuble:
         # Use mean of all differencces as threshold value, then threshold the tracked binary image
         for i in range(len(object_indices[0])):
             difference = difference_all[i]
-            x_actual = object_indices[1][i]
+            x_actual = object_indices[0][i]
             y_calculated = self.slope * x_actual + self.b
-            y_actual = object_indices[0][i]
+            y_actual = object_indices[1][i]
             if difference > thresh_value:
                 photo_tracked[x_actual][y_actual] = 0
         new_object_indices = np.where(photo_tracked!=0)
@@ -362,6 +368,7 @@ class Microtuble:
         print(self.ends_notTransposed)
 
         # return thresholded image
+        photo_tracked = np.transpose(photo_tracked)
         return photo_tracked, self.ends, self.ends_notTransposed
 
     def update_endpoints(self, points):
