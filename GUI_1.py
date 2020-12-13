@@ -36,6 +36,7 @@ class App:
         width=20, height=2,command=self.show_file)
         self.load_btn.pack(pady=2, padx=5)
 
+        self.next_frame = False
         self.pause = False
         self.after_id = 0
 
@@ -67,15 +68,22 @@ class App:
                 self.vid.frame_counter += 1
                 print(self.vid.frame_counter)
                 # https://stackoverflow.com/questions/54472997/video-player-by-python-tkinter-when-i-pause-video-i-cannot-re-play
+            if self.next_frame:
+                self.pause = True
+                self.next_frame = False
             if not self.pause:
                 self.after_id = self.window.after(self.delay, self.update)
             if self.pause:
                 self.window.after_cancel(self.after_id)
+
     
     
     def show_file(self):
         self.video_source = filedialog.askopenfilename()
         self.vid = SelectedVideo(self.video_source)
+       
+        self.next_btn = Button(self.window, text="Next Frame", command=self.play_next_frame, relief="flat", bg="#696969", fg="gray", font=("Courier", 12),width=20, height=2)
+        self.next_btn.pack(pady=1, padx=5)
 
         self.play_btn = Button(self.window, text="Play", command=self.play_video, relief="flat", bg="#696969", fg="gray", font=("Courier", 12),width=20, height=2)
         self.play_btn.pack(pady=1, padx=5)
@@ -97,7 +105,7 @@ class App:
 
         self.canvas.create_image(0, 0, image=self.photo, anchor=tk.NW)
         self.canvas_tracked.create_image(0, 0, image=self.photo, anchor=tk.NW)
-        self.delay = 20
+        self.delay = 2000
 
         # Bind click event to selecting a microtubule
         self.canvas.bind("<ButtonPress-1>", self.user_select_microtubule)
@@ -130,6 +138,7 @@ class App:
         self.y0 = self.microtubule_ends[0][1]
         self.x1 = self.microtubule_ends[1][0]
         self.y1 = self.microtubule_ends[1][1]
+
         frame = np.array(frame)
         frame = frame.astype(np.uint8)
 
@@ -155,8 +164,6 @@ class App:
         self.canvas_tracked.create_image(0, 0, image=self.photo_tracked, anchor=tk.NW)
         self.canvas.create_line(computed_ends[0][1], computed_ends[0][0], computed_ends[1][1], computed_ends[1][0], fill="blue", width=3)
     
-    # def show_track(self, label, canvas_tracked):
-    #     self.microtubule.track(label, canvas_tracked)
 
     def user_select_microtubule(self, event):
 
@@ -170,27 +177,30 @@ class App:
 
             # If the user has now selected 2 points, do not allow them to select anymore
             if self.number_user_clicks == 2:
+                print("in here")
                 self.x0 = self.microtubule_ends[0][0]
                 self.y0 = self.microtubule_ends[0][1]
-                self.x1 = self.microtubule_ends[1][0]
+                self.x1 = self.microtubule_ends[0][0]
                 self.y1 = self.microtubule_ends[1][1]
 
+                print("user selected points:")
+                print(self.microtubule_ends)
                 self.canvas_tracked.create_line(self.x0, self.y0, self.x1, self.y1, fill="blue", width=3)
 
                 self.allow_user_input = False
                 self.number_user_clicks = 0
 
-                # Start the update function 
-                # self.window.after(2000, self.update)
+                self.window.after(self.delay, self.show_frame(self.first_frame))
+                
 
-                labeled = self.display_selected_microtubule(self.first_frame)
-                self.photo_tracked = ImageTk.PhotoImage(image=Image.fromarray(labeled))        
-                self.canvas.create_image(0, 0, image=self.photo, anchor=tk.NW)       
-                self.canvas_tracked.create_image(0, 0, image=self.photo_tracked, anchor=tk.NW)
-                self.delay = 20
+    def show_frame(self, frame):
+        labeled = self.display_selected_microtubule(frame)
+        self.photo_tracked = ImageTk.PhotoImage(image=Image.fromarray(labeled))        
+        self.canvas.create_image(0, 0, image=self.photo, anchor=tk.NW)       
+        self.canvas_tracked.create_image(0, 0, image=self.photo_tracked, anchor=tk.NW)
 
-                self.initiate_track(labeled)
-                # self.window.after(2000, self.display_selected_microtubule)
+        self.initiate_track(labeled)
+
                 
     def reset(self):
         self.canvas.destroy()
@@ -207,6 +217,11 @@ class App:
                 self.update()
             else:
                 self.update()
+    
+    def play_next_frame(self):
+        if self.allow_user_input == False:
+            self.next_frame = True
+            self.update()
             
     def pause_video(self):           
         self.pause = True
@@ -215,12 +230,14 @@ class App:
 
 class SelectedVideo:
     def __init__(self, video_source=0):
+        
         # Open the video source
         self.vid = tc.opentiff(video_source)
         if not self.vid.isOpened():
             raise ValueError("Unable to open video source", video_source)
         self.vid_copy = cv2.VideoCapture(video_source)
         self.end = False
+
         # Get video source width and height
         self.width = self.vid_copy.get(cv2.CAP_PROP_FRAME_WIDTH)
         self.height = self.vid_copy.get(cv2.CAP_PROP_FRAME_HEIGHT)
@@ -290,7 +307,13 @@ class Microtuble:
                 photo_tracked[y_actual][x_actual] = 0
         new_object_indices = np.where(photo_tracked!=0)
         self.update_endpoints(new_object_indices)
+
         print(self.ends)
+        test = np.array([self.ends[0][1], self.ends[0][0]])
+        test2 = np.array([self.ends[1][1], self.ends[1][0]])
+        self.ends_notTransposed = np.array([test, test2])
+        print(self.ends_notTransposed)
+
         # return thresholded image
         return photo_tracked, self.ends
 

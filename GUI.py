@@ -65,6 +65,7 @@ class App:
                 self.canvas.create_image(0, 0, image=self.photo, anchor=tk.NW)
                 self.canvas.create_oval(self.x0+5, self.y0+5, self.x0-5, self.y0-5, fill="blue", outline="#DDD", width=1)
                 self.canvas.create_oval(self.x1+5, self.y1+5, self.x1-5, self.y1-5, fill="blue", outline="#DDD", width=1)
+                self.canvas.create_oval(self.component_number_x+5, self.component_number_y+5, self.component_number_x-5, self.component_number_y-5, fill="red", outline="#DDD", width=1)
 
                 # track the microtubule
                 self.photo_tracked, self.microtubule_ends_transposed, self.microtubule_ends = self.microtubule.track(labeled)
@@ -160,10 +161,10 @@ class App:
         # Get all connected components of the frame 
         _, label = cv2.connectedComponents(frame)
 
-        x = math.floor((self.x0 + self.x1)/2)
-        y = math.floor((self.y0 + self.y1)/2)
+        self.component_number_x = math.floor((self.x0 + self.x1)/2)
+        self.component_number_y = math.floor((self.y0 + self.y1)/2)
         # Get the component number of our microtubule (This line needs to be changed)
-        componentNumber = label[y - 2: y + 2, x - 2:x + 2].max()
+        componentNumber = label[self.component_number_y - 4: self.component_number_y + 4, self.component_number_x - 4:self.component_number_x + 4].max()
 
         # Set everything that is not this component number to be the background
         label[label != componentNumber] = 0
