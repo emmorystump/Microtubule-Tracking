@@ -346,6 +346,15 @@ class Microtuble:
         thresh_value = thresh_value - 0.5*thresh_std
 
         print(thresh_value)
+        
+        padding_x = 20
+        padding_y = 15
+
+        min_end_x = np.min([self.ends[0][0], self.ends[1][0]]) - padding_x
+        max_end_x = np.max([self.ends[0][0], self.ends[1][0]]) + padding_x
+        min_end_y = np.min([self.ends[0][1], self.ends[1][1]]) - padding_y
+        max_end_y = np.max([self.ends[0][1], self.ends[1][1]]) + padding_y
+
 
         # Use mean of all differencces as threshold value, then threshold the tracked binary image
         for i in range(len(object_indices[0])):
@@ -353,8 +362,15 @@ class Microtuble:
             x_actual = object_indices[0][i]
             y_calculated = self.slope * x_actual + self.b
             y_actual = object_indices[1][i]
+            
             if difference > thresh_value:
                 photo_tracked[x_actual][y_actual] = 0
+            if x_actual < min_end_x or x_actual > max_end_x:
+                photo_tracked[x_actual][y_actual] = 0
+            if y_actual < min_end_y or y_actual > max_end_y:
+                photo_tracked[x_actual][y_actual] = 0
+
+
         new_object_indices = np.where(photo_tracked!=0)
         self.update_endpoints(new_object_indices)
 
@@ -378,11 +394,14 @@ class Microtuble:
         points = np.transpose(points)
         for pair in combinations(points,2):
             if self.square_distance(*pair) > max_square_distance:
-                max_square_distance = self.square_distance(*pair)
-                max_pair = pair
-        max_pair = np.array(max_pair)
-
-        self.ends = max_pair
+                pair_slope = (pair[0][1]-pair[1][1])/(pair[0][0]-pair[1][0])
+                slope_diff = np.abs(pair_slope-self.slope)
+                if slope_diff < 0.5:
+                    max_square_distance = self.square_distance(*pair)
+                    max_pair = pair
+        if len(max_pair) > 0:         
+            max_pair = np.array(max_pair)
+            self.ends = max_pair
 
  
 
