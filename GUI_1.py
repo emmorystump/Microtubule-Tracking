@@ -76,6 +76,11 @@ class App:
                 print(self.vid.frame_counter)
 
                 # https://stackoverflow.com/questions/54472997/video-player-by-python-tkinter-when-i-pause-video-i-cannot-re-play
+            if self.nextFrame:
+                self.pause = True
+                self.nextFrame= False
+                print("in here")
+            
             if not self.pause:
                 self.after_id = self.window.after(self.delay, self.update)
             if self.pause:
@@ -86,8 +91,8 @@ class App:
         self.video_source = filedialog.askopenfilename()
         self.vid = SelectedVideo(self.video_source)
 
-        self.play_btn = Button(self.window, text="Next Frame", command=self.play_video, relief="flat", bg="#696969", fg="gray", font=("Courier", 12),width=20, height=2)
-        self.play_btn.pack(pady=1, padx=5)
+        self.next_btn = Button(self.window, text="Next Frame", command=self.play_next_frame, relief="flat", bg="#696969", fg="gray", font=("Courier", 12),width=20, height=2)
+        self.next_btn.pack(pady=1, padx=5)
 
         self.play_btn = Button(self.window, text="Play", command=self.play_video, relief="flat", bg="#696969", fg="gray", font=("Courier", 12),width=20, height=2)
         self.play_btn.pack(pady=1, padx=5)
@@ -247,7 +252,13 @@ class App:
                 self.update()
             else:
                 self.update()
-            
+    
+    def play_next_frame(self):
+        print("in here 2")
+        self.nextFrame = True
+        self.pause = False
+        self.update()
+
     def pause_video(self):           
         self.pause = True
     
