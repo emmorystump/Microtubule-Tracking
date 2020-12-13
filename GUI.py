@@ -1,116 +1,377 @@
 import tkinter as tk
 import tiffcapture as tc
+from tkinter import *
 from tkinter import filedialog
-from PIL import Image, ImageTk
+from PIL import Image, ImageTk, ImageDraw, ImageEnhance
 from cv2 import cv2
+from itertools import combinations
 import numpy as np
-import matplotlib.pyplot as plt
-from PIL import Image, ImageSequence
+import math
 
-class MainGUI(tk.Frame):
-    # def __init__(self, parent, *args, **kwargs):
-    #     tk.Frame.__init__(self, parent, *args, **kwargs)
-    # Source: https://stackoverflow.com/questions/56426067/displaying-an-image-on-a-label-by-selecting-the-image-via-button
-    # https://scribles.net/showing-video-image-on-tkinter-window-with-opencv/
-    # https://stackoverflow.com/questions/32342935/using-opencv-with-tkinter
-    def __init__(self, master=None):
-        tk.Frame.__init__(self, master)
-        w,h = 1080, 700
-        master.minsize(width=w, height=h)
-        master.maxsize(width=w, height=h)
 
-        self.pack()
+# source: https://solarianprogrammer.com/2018/04/21/python-opencv-show-video-tkinter-window/
+class App:
+    def __init__(self, window, window_title, video_source='microtubule_videos/1380 nM SPR1GFP WT - 13_XY1500063595_Z0_T000_C1.tiff'):
+        np.set_printoptions(threshold=np.inf)
+        
+        self.window = window
+        self.window.title(window_title)
+        self.window_height = 1000
+        self.window_width = 2000
+        self.video_source = video_source
 
-        self.interval = 24
-        self.title = tk.Label(self, text="Microtubule Tracker", font=("Courier", 30))
+        self.title = tk.Label(window, text="Microtubule Tracker", font=("Courier", 30))
         self.title.pack(pady=4, padx=5)
 
-        self.load_btn = tk.Button(self, text="Load Data", 
-        relief="flat", bg="#6785d0", 
-        fg="white", font=("Courier", 12),
+        self.user_prompt = tk.Label(window, text="Please select a microtubule video file and then select both ends of a microtubule to begin.", font=("Courier", 14))
+        self.user_prompt.pack(pady=4, padx=5)
+
+        self.allow_user_input = True
+        self.number_user_clicks = 0
+        self.microtubule_ends = []
+        
+        # Play, pause, restart
+
+        self.load_btn = tk.Button(window, text="Load Data", relief="flat", bg="#6785d0", fg="gray", font=("Courier", 12),
         width=20, height=2,command=self.show_file)
-        self.load_btn.pack(pady=10, padx=5)
+        self.load_btn.pack(pady=2, padx=5)
 
-        # img = cv2.imread('microtubule_videos/Dynamics_microtubules2.tif', cv2.IMREAD_GRAYSCALE)
-        self.cap = cv2.VideoCapture('microtubule_videos/1380 nM SPR1GFP WT - 13_XY1500063595_Z0_T000_C1.tiff')
-        self.tiff = tc.opentiff('microtubule_videos/1380 nM SPR1GFP WT - 13_XY1500063595_Z0_T000_C1.tiff')
-        self.width = self.cap.get(cv2.CAP_PROP_FRAME_WIDTH)
-        self.height = self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
+        self.pause = False
+        self.nextFrame = False
+        self.after_id = 0
 
-        self.canvas = tk.Canvas(self, width=self.width, height=self.height)
-        self.canvas.pack()
 
-        
-        
-      
-        #     self.frame = Image.fromarray(frame)
-        #     self.frame = ImageTk.PhotoImage(self.frame)
-        #     self.canvas.create_image(0, 0, anchor=tk.NW, image=self.frame)
-        #     self.canvas.image = self.frame
-        # self.after(self.interval, self.update_image)
+        self.window.mainloop()
 
-            # self.update_image(frame)
-            # cv2.imshow('video', img)
-            cv2.waitKey(80)
+    def update(self):
+        # Get the current frame
+        current_frame = self.vid.get_frame()
 
-        # cv2.destroyWindow('video')
-       
-        # self.video = tk.Label()
+        # If it is not the end of the video, return True
+        if current_frame != None:
+            ret, frame = current_frame
+            
+            # If it is true
+            if ret:
 
-        # self.update_image()
+                # process the frame (normalize, blur, convert to image, enhance contrast)
+                frame = self.process_frame(frame)
 
-        # self.image = ImageTk.PhotoImage(Image.fromarray(img))
-        # self.label = tk.Label(image=self.image)
+                # Get our component
+                labeled = self.display_selected_microtubule(frame)
+                print(self.microtubule.ends)
 
-        # self.label.pack()
-        # self.title.grid(sticky=tk.W, column=0, row=0, pady=4, padx=5)
-        # self.load_btn.grid(sticky=tk.W, column=0, row=1, pady=10, padx=5)
-        # self.label.grid(column=10, row=10, pady=100, padx=50)
-        # self.initGUI()     
-        # def initGUI(self):
-    def update_image(self, cur_frame):
+                self.photo = ImageTk.PhotoImage(image=frame)
+                self.canvas.create_image(0, 0, image=self.photo, anchor=tk.NW)
+                self.canvas.create_oval(self.x0+5, self.y0+5, self.x0-5, self.y0-5, fill="blue", outline="#DDD", width=1)
+                
+                # track the microtubule
+                self.photo_tracked, self.microtubule_ends_transposed, self.microtubule_ends = self.microtubule.track(labeled)
+                self.photo_tracked = ImageTk.PhotoImage(image=Image.fromarray(self.photo_tracked))
+                self.canvas_tracked.create_image(0, 0, image=self.photo_tracked, anchor=tk.NW)
+
+                self.vid.frame_counter += 1
+                print(self.vid.frame_counter)
+
+                # https://stackoverflow.com/questions/54472997/video-player-by-python-tkinter-when-i-pause-video-i-cannot-re-play
+            if not self.pause:
+                self.after_id = self.window.after(self.delay, self.update)
+            if self.pause:
+                self.window.after_cancel(self.after_id)
     
-        self.frame = Image.fromarray(cur_frame)
-        self.frame = ImageTk.PhotoImage(self.frame)
-        self.canvas.create_image(0, 0, anchor=tk.NW, image=self.frame)
-        self.canvas.image = self.frame
-        self.after(self.interval, self.update_image)
-
-    #     # Get the latest frame and convert image format
-    #     success, frame_read = self.cap.read()
-    #     if success:
-    #         self.frame = cv2.cvtColor(frame_read, cv2.COLOR_BGR2GRAY) # to GRAY
-    #         self.frame = Image.fromarray(self.frame) # to PIL format
-    #         self.frame = ImageTk.PhotoImage(self.frame) # to ImageTk format
-    #         # Update image
-    #         self.canvas.create_image(0, 0, anchor=tk.NW, image=self.frame)
-    #         self.canvas.image = self.frame
-    #         # Repeat every 'interval' ms
-    #         self.after(self.interval, self.update_image)
-
-    # def show_frame(self):
-    #     _, frame = cap.read()
-    #     frame = cv2.flip(frame, 1)
-    #     cv2_frames = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    #     cv2_frames = Image.fromarray(cv2_frames)
-    #     tk_frames = ImageTk.PhotoImage(image=cv2_frames)
-    #     lmain.imgtk = tk_frames
-    #     lmain.configure(image=tk_frames)
-    #     lmain.after(10, show_frame) 
-        
+    
     def show_file(self):
-        file_path_selected = filedialog.askopenfilename()
-        img_arr = cv2.imread(file_path_selected, cv2.IMREAD_GRAYSCALE)
-        self.image_loaded = ImageTk.PhotoImage(Image.fromarray(img_arr))
-        self.label.configure(image=self.image_loaded)
-        self.label.image = self.image_loaded
+        self.video_source = filedialog.askopenfilename()
+        self.vid = SelectedVideo(self.video_source)
 
-        return file_path_selected
+        self.play_btn = Button(self.window, text="Next Frame", command=self.play_video, relief="flat", bg="#696969", fg="gray", font=("Courier", 12),width=20, height=2)
+        self.play_btn.pack(pady=1, padx=5)
+
+        self.play_btn = Button(self.window, text="Play", command=self.play_video, relief="flat", bg="#696969", fg="gray", font=("Courier", 12),width=20, height=2)
+        self.play_btn.pack(pady=1, padx=5)
+        self.pause_btn = Button(self.window, text="Pause", command=self.pause_video,  relief="flat", bg="#696969", fg="gray", font=("Courier", 12),width=20, height=2)
+        self.pause_btn.pack(pady=1, padx=10)
+        self.reset_btn = Button(self.window, text="Reset", command=self.reset,  relief="flat", bg="#696969", fg="gray", font=("Courier", 12),width=20, height=2)
+        self.reset_btn.pack(pady=1, padx=15)
+
+        self.canvas = tk.Canvas(self.window, width = self.vid.width, height = self.vid.height)
+        self.canvas.pack(pady=5, padx=200, side=tk.LEFT)
+        self.canvas_tracked = tk.Canvas(self.window, width = self.vid.width, height = self.vid.height)
+        self.canvas_tracked.pack(pady=5, padx=210, side=tk.LEFT)
+        self.canvas.pack()
+        
+        self.first_frame = self.vid.get_frame()[1]
+        self.first_frame = self.process_frame(self.first_frame)
+        
+        self.photo = ImageTk.PhotoImage(image=self.first_frame)
+
+        self.canvas.create_image(0, 0, image=self.photo, anchor=tk.NW)
+        self.canvas_tracked.create_image(0, 0, image=self.photo, anchor=tk.NW)
+        self.delay = 2000
+
+        # Bind click event to selecting a microtubule
+        self.canvas.bind("<ButtonPress-1>", self.user_select_microtubule)
+
+
+    def process_frame(self, frame):
+
+        # Normalizing our image
+        frame = frame/255
+        frame[frame > 255] = 255
+
+        # Gaussian blur
+        frame = cv2.GaussianBlur(frame,(3,3),5)
+
+        # Convert to a type we can threshold with
+        frame = frame.astype(np.uint8)
+
+        # Convert to image
+        converted_frame_img = Image.fromarray(np.uint8(frame))
+        frame_enhanced = ImageEnhance.Contrast(converted_frame_img)
+
+        # Enhance contrast
+        contrast = 3.5
+        frame = frame_enhanced.enhance(contrast)
+        
+        return frame
+
+    # Segment Microtubule
+    def display_selected_microtubule(self, frame):
+
+        # Get the line ends - NEED TO FIGURE OUT WHEN THESE NEED TO BE TRANSPOSED
+        self.x0 = self.microtubule_ends[0][0]
+        self.y0 = self.microtubule_ends[0][1]
+        self.x1 = self.microtubule_ends[1][0]
+        self.y1 = self.microtubule_ends[1][1]
+
+        # Convert the frame to an nparray and set type to uint8
+        frame = np.array(frame)
+        frame = frame.astype(np.uint8)
+
+        # Run adaptive thresholding on the frame array
+        frame = cv2.adaptiveThreshold(frame, frame.max(), cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 15, -2)
+
+        # Invert the frame array
+        frame[frame==255] = 1
+        frame[frame==0] = 255
+        frame[frame==1] = 0
+
+        # Get all connected components of the frame 
+        _, label = cv2.connectedComponents(frame)
+
+        x = math.floor((self.x0 + self.x1)/2)
+        y = math.floor((self.y0 + self.y1)/2)
+        # Get the component number of our microtubule (This line needs to be changed)
+        componentNumber = label[y - 2: y + 2, x - 2:x + 2].max()
+
+        # Set everything that is not this component number to be the background
+        label[label != componentNumber] = 0
+
+        return label
+
+    def initiate_track(self, label):
+
+        # Initiate track microtubule
+        self.microtubule = Microtuble(self.microtubule_ends)
+
+        # Compute the ends given the user entered ends
+        segmented_photo_tracked, computed_ends, computed_ends_notTransposed = self.microtubule.track(label)
+
+        # set our microtubule ends to the computed ends
+        self.microtubule_ends = computed_ends_notTransposed
+
+        # Show a line with these computed ends
+        self.photo_tracked = ImageTk.PhotoImage(image=Image.fromarray(segmented_photo_tracked))
+        self.canvas_tracked.create_image(0, 0, image=self.photo_tracked, anchor=tk.NW)
+        self.canvas.create_line(computed_ends[0][1], computed_ends[0][0], computed_ends[1][1], computed_ends[1][0], fill="blue", width=3)
+    
+
+    def user_select_microtubule(self, event):
+
+        # Check if the user is still allowed to enter input
+        if self.allow_user_input:
+
+            # Append (x,y) coords to microtubule ends
+            self.microtubule_ends.append([event.x, event.y])
+
+            # Increase click number
+            self.number_user_clicks += 1
+
+            # Create a circle on both canvases
+            self.canvas.create_oval(event.x+5, event.y+5, event.x-5, event.y-5, fill="blue", outline="#DDD", width=1)
+            self.canvas_tracked.create_oval(event.x+5, event.y+5, event.x-5, event.y-5, fill="blue", outline="#DDD", width=1)
+
+
+            # If the user has now selected 2 points, do not allow them to select anymore
+            if self.number_user_clicks == 2:
+        
+                self.x0 = self.microtubule_ends[0][0]
+                self.y0 = self.microtubule_ends[0][1]
+                self.x1 = self.microtubule_ends[0][0]
+                self.y1 = self.microtubule_ends[1][1]
+
+                print("user selected points:")
+                print(self.microtubule_ends)
+
+                # Create a line on the canvas
+                self.canvas_tracked.create_line(self.x0, self.y0, self.x1, self.y1, fill="blue", width=3)
+
+                # Disallow user input
+                self.allow_user_input = False
+
+                # Set number of clicks to be zero
+                self.number_user_clicks = 0
+
+                # show the first frame
+                # self.window.after(20, self.show_frame(self.first_frame))
+                labeled = self.display_selected_microtubule(self.first_frame)
+
+                self.initiate_track(labeled)
+
+                
+    def reset(self):
+        self.canvas.destroy()
+        self.canvas_tracked.destroy()
+        self.play_btn.destroy()
+        self.pause_btn.destroy()
+        self.reset_btn.destroy()
+        self.allow_user_input = True
+           
+    def play_video(self):
+        # Check that the user has selected 2 points
+        if self.allow_user_input == False:
+            if self.pause:
+                self.pause = False
+                self.update()
+            else:
+                self.update()
+            
+    def pause_video(self):           
+        self.pause = True
+    
+
+
+class SelectedVideo:
+    def __init__(self, video_source=0):
+        
+        # Open the video source
+        self.vid = tc.opentiff(video_source)
+        if not self.vid.isOpened():
+            raise ValueError("Unable to open video source", video_source)
+        self.vid_copy = cv2.VideoCapture(video_source)
+        self.end = False
+
+        # Get video source width and height
+        self.width = self.vid_copy.get(cv2.CAP_PROP_FRAME_WIDTH)
+        self.height = self.vid_copy.get(cv2.CAP_PROP_FRAME_HEIGHT)
+        self.frame_counter = 0
+        self.num_frames = 0
+
+    # Release the video source when the object is destroyed
+    def __del__(self):
+        if self.vid.isOpened():
+            self.vid.release()
+
+    def get_frame(self):
+        try:
+            frame = self.vid.next()
+            if self.vid.isOpened():
+                return (True, frame)
+            else:
+                return (False, None)
+        except Exception:
+            self.end = True
+            pass
+
+
+class Microtuble:
+    def __init__(self, ends):
+        # Update these with every frame
+        self.ends = ends
+
+        # This will track every set of ends we have so we can analyze later
+        self.endsArray = [self.ends]
+
+    def track(self, photo_tracked):
+
+        # Define the ends (non-transposed) of our image
+        x0 = self.ends[0][0]
+        y0 = self.ends[0][1]
+        x1 = self.ends[1][0]
+        y1 = self.ends[1][1]
+
+        # This is the slope and b-value of the line that point1 and point2 create
+        self.slope = (y1-y0)/(x1-x0)
+        self.b = y0 - (self.slope*x0)
+
+        # plug in all white pixels into our line equation, if the y value is significantly different than its actual y value, we get rid of it
+        object_indices = np.where(photo_tracked != 0)
+        difference_all = []
+
+        # Get all y differences
+        for i in range(len(object_indices[0])):
+            x_actual = object_indices[1][i]
+            y_calculated = self.slope * x_actual + self.b
+            y_actual = object_indices[0][i]
+
+            difference = np.abs(y_calculated-y_actual)
+            difference_all.append(difference)
+
+        difference_all = np.array(difference_all)
+        thresh_value = np.mean(difference_all)
+        thresh_std = np.std(difference_all)
+        thresh_value = thresh_value - 0.5*thresh_std
+
+        print(thresh_value)
+
+        # Use mean of all differencces as threshold value, then threshold the tracked binary image
+        for i in range(len(object_indices[0])):
+            difference = difference_all[i]
+            x_actual = object_indices[1][i]
+            y_calculated = self.slope * x_actual + self.b
+            y_actual = object_indices[0][i]
+            if difference > thresh_value:
+                photo_tracked[y_actual][x_actual] = 0
+        new_object_indices = np.where(photo_tracked!=0)
+        self.update_endpoints(new_object_indices)
+
+        print("Transposed Ends")
+        print(self.ends)
+        test = np.array([self.ends[0][1], self.ends[0][0]])
+        test2 = np.array([self.ends[1][1], self.ends[1][0]])
+        self.ends_notTransposed = np.array([test, test2])
+
+        print("Not transposed ends")
+        print(self.ends_notTransposed)
+
+        # return thresholded image
+        return photo_tracked, self.ends, self.ends_notTransposed
+
+    def update_endpoints(self, points):
+        max_square_distance = 0
+        max_pair = []
+        points = np.transpose(points)
+        for pair in combinations(points,2):
+            if self.square_distance(*pair) > max_square_distance:
+                max_square_distance = self.square_distance(*pair)
+                max_pair = pair
+        max_pair = np.array(max_pair)
+
+        self.ends = max_pair
+
+ 
+
+
+    # https://stackoverflow.com/questions/31667070/max-distance-between-2-points-in-a-data-set-and-identifying-the-points
+    def square_distance(self,x,y): 
+
+        return sum([(xi-yi)**2 for xi, yi in zip(x,y)])    
+
 
 
 if __name__ == "__main__":  
-    root = tk.Tk(className="Microtubule Tracker")
-    root.geometry("1080x700")
-    MainGUI(root)
-    # .pack(side="top", fill="both", expand=True)
-    root.mainloop()
+    root = tk.Tk()
+    root.geometry("2000x1000")
+    App(root, "Test Video")
+
+
