@@ -4,8 +4,10 @@ from tkinter import *
 from tkinter import filedialog
 from PIL import Image, ImageTk, ImageDraw, ImageEnhance
 from cv2 import cv2
+from itertools import combinations
 import numpy as np
 import math
+
 
 # source: https://solarianprogrammer.com/2018/04/21/python-opencv-show-video-tkinter-window/
 class App:
@@ -45,11 +47,25 @@ class App:
         if current_frame != None:
             ret, frame = current_frame
             if ret:
+                # enhance and blur frame
                 frame = self.process_frame(frame)
+
+                # get labeled connected component matrix, uses self.x0, self.x1, self.y0 and self.y1, all of which 
+                # needs to be updated in each iteration -> update self.microtubule_ends
+                labeled = self.display_selected_microtubule(frame)
+                print(self.microtubule.ends)
+                print(len(np.where(labeled!=0)[0]))
+                # after frame 3 the photo become completely dark, need a new function to only update photo tracked
+                # TODO: how to find the same microtubule and segment it the same way as the previous one?
+                
+                self.photo_tracked, self.microtubule_ends = self.microtubule.track(labeled)
+                self.photo_tracked = ImageTk.PhotoImage(image=Image.fromarray(self.photo_tracked))
+                self.canvas_tracked.create_image(0, 0, image=self.photo_tracked, anchor=tk.NW)
+
                 self.photo = ImageTk.PhotoImage(image=frame)
                 self.canvas.create_image(0, 0, image=self.photo, anchor=tk.NW)
-                self.canvas_tracked.create_image(0, 0, image=self.photo, anchor=tk.NW)
                 self.vid.frame_counter += 1
+                print(self.vid.frame_counter)
                 # https://stackoverflow.com/questions/54472997/video-player-by-python-tkinter-when-i-pause-video-i-cannot-re-play
             if not self.pause:
                 self.after_id = self.window.after(self.delay, self.update)
@@ -110,7 +126,13 @@ class App:
         return frame
 
     def display_selected_microtubule(self, frame):
+        self.x0 = self.microtubule_ends[0][0]
+        self.y0 = self.microtubule_ends[0][1]
+        self.x1 = self.microtubule_ends[1][0]
+        self.y1 = self.microtubule_ends[1][1]
         frame = np.array(frame)
+        frame = frame.astype(np.uint8)
+
         frame = cv2.adaptiveThreshold(frame, frame.max(), cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 15, -2)
 
         frame[frame==255] = 1
@@ -125,12 +147,16 @@ class App:
 
         return label
 
-    def track(self, label):
-        trackMicrotubule = TrackMicrotuble(self.microtubule_ends)
-        segmented_photo_tracked = trackMicrotubule.initiateTracking(self.first_frame, label, self.canvas_tracked)
-       
+    def initiate_track(self, label):
+        self.microtubule = Microtuble(self.microtubule_ends)
+        segmented_photo_tracked, computed_ends = self.microtubule.track(label)
+        self.microtubule_ends = computed_ends
         self.photo_tracked = ImageTk.PhotoImage(image=Image.fromarray(segmented_photo_tracked))
         self.canvas_tracked.create_image(0, 0, image=self.photo_tracked, anchor=tk.NW)
+        self.canvas.create_line(computed_ends[0][1], computed_ends[0][0], computed_ends[1][1], computed_ends[1][0], fill="blue", width=3)
+    
+    # def show_track(self, label, canvas_tracked):
+    #     self.microtubule.track(label, canvas_tracked)
 
     def user_select_microtubule(self, event):
 
@@ -163,7 +189,7 @@ class App:
                 self.canvas_tracked.create_image(0, 0, image=self.photo_tracked, anchor=tk.NW)
                 self.delay = 20
 
-                self.track(labeled)
+                self.initiate_track(labeled)
                 # self.window.after(2000, self.display_selected_microtubule)
                 
     def reset(self):
@@ -218,7 +244,7 @@ class SelectedVideo:
             pass
 
 
-class TrackMicrotuble:
+class Microtuble:
     def __init__(self, ends):
         # Update these with every frame
         self.ends = ends
@@ -226,7 +252,7 @@ class TrackMicrotuble:
         # This will track every set of ends we have so we can analyze later
         self.endsArray = [self.ends]
 
-    def initiateTracking(self, first_frame, photo_tracked, canvas_tracked):
+    def track(self, photo_tracked):
         x0 = self.ends[0][0]
         y0 = self.ends[0][1]
         x1 = self.ends[1][0]
@@ -235,15 +261,6 @@ class TrackMicrotuble:
         # This is the slope and b-value of the line that point1 and point2 create
         self.slope = (y1-y0)/(x1-x0)
         self.b = y0 - (self.slope*x0)
-
-        # use this information to find the endpoints of the line
-        testx1 = 0
-        testy1 = self.slope * testx1 +self.b
-
-        testx2 = 400
-        testy2 = self.slope * testx2 + self.b
-
-        canvas_tracked.create_line(testx1, testy1, testx2, testy2, fill="blue", width=3)
 
         # plug in all white pixels into our line equation, if the y value is significantly different than its actual y value, we get rid of it
         object_indices = np.where(photo_tracked != 0)
@@ -257,11 +274,12 @@ class TrackMicrotuble:
 
             difference = np.abs(y_calculated-y_actual)
             difference_all.append(difference)
+
+        difference_all = np.array(difference_all)
         thresh_value = np.mean(difference_all)
         thresh_std = np.std(difference_all)
         thresh_value = thresh_value - 0.5*thresh_std
         print(thresh_value)
-
         # Use mean of all differencces as threshold value, then threshold the tracked binary image
         for i in range(len(object_indices[0])):
             difference = difference_all[i]
@@ -270,10 +288,33 @@ class TrackMicrotuble:
             y_actual = object_indices[0][i]
             if difference > thresh_value:
                 photo_tracked[y_actual][x_actual] = 0
-            
+        new_object_indices = np.where(photo_tracked!=0)
+        self.update_endpoints(new_object_indices)
+        print(self.ends)
         # return thresholded image
-        return photo_tracked
-        
+        return photo_tracked, self.ends
+
+    def update_endpoints(self, points):
+        max_square_distance = 0
+        max_pair = []
+        points = np.transpose(points)
+        for pair in combinations(points,2):
+            if self.square_distance(*pair) > max_square_distance:
+                max_square_distance = self.square_distance(*pair)
+                max_pair = pair
+        max_pair = np.array(max_pair)
+
+        self.ends = max_pair
+
+ 
+
+
+    # https://stackoverflow.com/questions/31667070/max-distance-between-2-points-in-a-data-set-and-identifying-the-points
+    def square_distance(self,x,y): 
+
+        return sum([(xi-yi)**2 for xi, yi in zip(x,y)])    
+
+
 
 if __name__ == "__main__":  
     root = tk.Tk()
