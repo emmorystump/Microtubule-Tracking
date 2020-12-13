@@ -64,7 +64,8 @@ class App:
                 self.photo = ImageTk.PhotoImage(image=frame)
                 self.canvas.create_image(0, 0, image=self.photo, anchor=tk.NW)
                 self.canvas.create_oval(self.x0+5, self.y0+5, self.x0-5, self.y0-5, fill="blue", outline="#DDD", width=1)
-                
+                self.canvas.create_oval(self.x1+5, self.y1+5, self.x1-5, self.y1-5, fill="blue", outline="#DDD", width=1)
+
                 # track the microtubule
                 self.photo_tracked, self.microtubule_ends_transposed, self.microtubule_ends = self.microtubule.track(labeled)
                 self.photo_tracked = ImageTk.PhotoImage(image=Image.fromarray(self.photo_tracked))
