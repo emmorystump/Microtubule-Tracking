@@ -63,7 +63,7 @@ class App:
                 # Get our component
                 labeled = self.display_selected_microtubule(frame)
                 print(self.microtubule.ends)
-
+                print("label in update:", len(np.where(labeled!=0)[0]))
                 self.photo = ImageTk.PhotoImage(image=frame)
                 self.canvas.create_image(0, 0, image=self.photo, anchor=tk.NW)
                 self.canvas.create_oval(self.x0+5, self.y0+5, self.x0-5, self.y0-5, fill="blue", outline="#DDD", width=1)
@@ -80,7 +80,7 @@ class App:
                 self.photo_tracked = cv2.erode(self.photo_tracked, kernel, iterations = 1)
 
                 self.photo_tracked[self.photo_tracked!=0] = 255
-                        
+                
                 self.photo_tracked = ImageTk.PhotoImage(image=Image.fromarray(self.photo_tracked))
                 self.canvas_tracked.create_image(0, 0, image=self.photo_tracked, anchor=tk.NW)
 
@@ -183,7 +183,8 @@ class App:
         self.component_number_x = math.floor((self.x0 + self.x1)/2)
         self.component_number_y = math.floor((self.y0 + self.y1)/2)
         # Get the component number of our microtubule (This line needs to be changed)
-        componentNumber = label[self.component_number_x - 4: self.component_number_x + 4, self.component_number_y - 4:self.component_number_y + 4].max()
+        # componentNumber = label[self.component_number_x - 4: self.component_number_x + 4, self.component_number_y - 4:self.component_number_y + 4].max()
+        componentNumber = label[self.component_number_x-2: self.component_number_x+2, self.component_number_y-2:self.component_number_y+2].max()
 
         # Set everything that is not this component number to be the background
         label[label != componentNumber] = 0
@@ -362,7 +363,7 @@ class Microtuble:
         thresh_std = np.std(difference_all)
         thresh_value = thresh_value - 0.5*thresh_std
 
-        print(thresh_value)
+        print(len(object_indices[0]), photo_tracked.shape)
         
         padding_x = 20
         padding_y = 15
@@ -417,8 +418,12 @@ class Microtuble:
                     if photo_tracked[pair[0][0]][pair[0][1]] != 0 and photo_tracked[pair[1][0]][pair[1][1]] != 0:
                         max_square_distance = self.square_distance(*pair)
                         max_pair = pair
+        
         if len(max_pair) > 0:         
             max_pair = np.array(max_pair)
+            print("end point 1 pixel value: ",photo_tracked[max_pair[0][0]][max_pair[0][1]])
+            print("end point 2 pixel value: ",photo_tracked[max_pair[1][0]][max_pair[1][1]])
+
             self.ends = max_pair
 
  
