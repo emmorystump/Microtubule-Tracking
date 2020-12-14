@@ -72,6 +72,15 @@ class App:
 
                 # track the microtubule
                 self.photo_tracked, self.microtubule_ends, self.microtubule_ends_transposed = self.microtubule.track(labeled)
+                        
+                self.photo_tracked = self.photo_tracked.astype(np.uint8)
+                kernel = np.ones((2, 2), np.uint8)
+
+                self.photo_tracked = cv2.dilate(self.photo_tracked, kernel, iterations = 2)
+                self.photo_tracked = cv2.erode(self.photo_tracked, kernel, iterations = 1)
+
+                self.photo_tracked[self.photo_tracked!=0] = 255
+                        
                 self.photo_tracked = ImageTk.PhotoImage(image=Image.fromarray(self.photo_tracked))
                 self.canvas_tracked.create_image(0, 0, image=self.photo_tracked, anchor=tk.NW)
 
@@ -83,7 +92,7 @@ class App:
             #     self.pause = True
             #     self.nextFrame= False
             #     print("in here")
-            
+
             if not self.pause:
                 self.after_id = self.window.after(self.delay, self.update)
             # if self.pause:
@@ -178,6 +187,8 @@ class App:
 
         # Set everything that is not this component number to be the background
         label[label != componentNumber] = 0
+        
+        
 
         return label
 
@@ -199,6 +210,13 @@ class App:
         # Compute the ends given the user entered ends
         segmented_photo_tracked, computed_ends, computed_ends_notTransposed = self.microtubule.track(label)
 
+        segmented_photo_tracked = segmented_photo_tracked.astype(np.uint8)
+        kernel = np.ones((2, 2), np.uint8)
+
+        segmented_photo_tracked = cv2.dilate(segmented_photo_tracked, kernel, iterations = 2)
+        segmented_photo_tracked = cv2.erode(segmented_photo_tracked, kernel, iterations = 1)
+
+        segmented_photo_tracked[segmented_photo_tracked!=0] = 255
         # set our microtubule ends to the computed ends
         self.microtubule_ends = computed_ends
 
@@ -272,7 +290,6 @@ class App:
                 self.update()
     
     def play_next_frame(self):
-        print("in here 2")
         # self.nextFrame = True
         self.pause = True
         self.update()
@@ -372,7 +389,7 @@ class Microtuble:
 
 
         new_object_indices = np.where(photo_tracked!=0)
-        self.update_endpoints(new_object_indices)
+        self.update_endpoints(new_object_indices, photo_tracked)
 
         print("Transposed Ends")
         print(self.ends)
@@ -387,7 +404,7 @@ class Microtuble:
         photo_tracked = np.transpose(photo_tracked)
         return photo_tracked, self.ends, self.ends_notTransposed
 
-    def update_endpoints(self, points):
+    def update_endpoints(self, points, photo_tracked):
         print("in update endpoints")
         max_square_distance = 0
         max_pair = []
@@ -397,8 +414,9 @@ class Microtuble:
                 pair_slope = (pair[0][1]-pair[1][1])/(pair[0][0]-pair[1][0])
                 slope_diff = np.abs(pair_slope-self.slope)
                 if slope_diff < 0.5:
-                    max_square_distance = self.square_distance(*pair)
-                    max_pair = pair
+                    if photo_tracked[pair[0][0]][pair[0][1]] != 0 and photo_tracked[pair[1][0]][pair[1][1]] != 0:
+                        max_square_distance = self.square_distance(*pair)
+                        max_pair = pair
         if len(max_pair) > 0:         
             max_pair = np.array(max_pair)
             self.ends = max_pair
