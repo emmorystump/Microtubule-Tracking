@@ -5,6 +5,7 @@ from tkinter import filedialog
 from PIL import Image, ImageTk, ImageDraw, ImageEnhance
 from cv2 import cv2
 from itertools import combinations
+from sklearn import linear_model
 import numpy as np
 import math
 
@@ -180,10 +181,22 @@ class App:
         # Get all connected components of the frame 
         _, label = cv2.connectedComponents(frame)
 
-        self.component_number_x = math.floor((self.x0 + self.x1)/2)
-        self.component_number_y = math.floor((self.y0 + self.y1)/2)
+        testCompX = math.floor((self.x0 + self.x1)/2)
+        testCompY = math.floor((self.y0 + self.y1)/2)
+        componentVal = frame[testCompX-2: testCompX+2, testCompY-2:testCompY+2].max()
+        
+        if componentVal > 0:
+            self.component_number_x = math.floor((self.x0 + self.x1)/2)
+            self.component_number_y = math.floor((self.y0 + self.y1)/2)
+
         # Get the component number of our microtubule (This line needs to be changed)
         # componentNumber = label[self.component_number_x - 4: self.component_number_x + 4, self.component_number_y - 4:self.component_number_y + 4].max()
+        print("Component value")
+        print(label[self.component_number_x][self.component_number_y])
+        print(frame[self.component_number_x][self.component_number_y])
+
+
+
         componentNumber = label[self.component_number_x-2: self.component_number_x+2, self.component_number_y-2:self.component_number_y+2].max()
 
         # Set everything that is not this component number to be the background
@@ -368,10 +381,18 @@ class Microtuble:
         padding_x = 20
         padding_y = 15
 
-        min_end_x = np.min([self.ends[0][0], self.ends[1][0]]) - padding_x
-        max_end_x = np.max([self.ends[0][0], self.ends[1][0]]) + padding_x
-        min_end_y = np.min([self.ends[0][1], self.ends[1][1]]) - padding_y
-        max_end_y = np.max([self.ends[0][1], self.ends[1][1]]) + padding_y
+        x0 = self.ends[0][0]
+        y0 = self.ends[0][1]
+        x1 = self.ends[1][0]
+        y1 = self.ends[1][1]
+
+        min_end_x = np.min([x0, x1]) - padding_x
+        max_end_x = np.max([x0, x1]) + padding_x
+
+        min_end_y = np.min([y0, y1]) - padding_y
+        max_end_y = np.max([y0, y1]) + padding_y
+
+        slope_thresh = .1
 
 
         # Use mean of all differencces as threshold value, then threshold the tracked binary image
@@ -388,18 +409,26 @@ class Microtuble:
             if y_actual < min_end_y or y_actual > max_end_y:
                 photo_tracked[x_actual][y_actual] = 0
 
+            # If the slope of y_actual and the old endpoint deviates by a significant amount get rid of it
+            slope0 = (y0-y_actual)/(x0-x_actual+1e-9)
+            slope1 = (y1-y_actual)/(x1-x_actual+1e-9)
+
+            slope0 = np.abs(slope0 - self.slope)
+            slope1 = np.abs(slope1 - self.slope)
+
+            slope_deviation = np.min([slope0, slope1])
+
+            if slope_deviation > slope_thresh:
+                photo_tracked[x_actual][y_actual] = 0
+
 
         new_object_indices = np.where(photo_tracked!=0)
+
         self.update_endpoints(new_object_indices, photo_tracked)
 
-        print("Transposed Ends")
-        print(self.ends)
         test = np.array([self.ends[0][1], self.ends[0][0]])
         test2 = np.array([self.ends[1][1], self.ends[1][0]])
         self.ends_notTransposed = np.array([test, test2])
-
-        print("Not transposed ends")
-        print(self.ends_notTransposed)
 
         # return thresholded image
         photo_tracked = np.transpose(photo_tracked)
@@ -412,9 +441,9 @@ class Microtuble:
         points = np.transpose(points)
         for pair in combinations(points,2):
             if self.square_distance(*pair) > max_square_distance:
-                pair_slope = (pair[0][1]-pair[1][1])/(pair[0][0]-pair[1][0])
+                pair_slope = (pair[0][1]-pair[1][1])/(pair[0][0]-pair[1][0]+1e-9)
                 slope_diff = np.abs(pair_slope-self.slope)
-                if slope_diff < 0.5:
+                if slope_diff < 0.1:
                     if photo_tracked[pair[0][0]][pair[0][1]] != 0 and photo_tracked[pair[1][0]][pair[1][1]] != 0:
                         max_square_distance = self.square_distance(*pair)
                         max_pair = pair
