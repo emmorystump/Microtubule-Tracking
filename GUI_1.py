@@ -76,10 +76,10 @@ class App:
                 self.photo_tracked, self.microtubule_ends, self.slope, self.b = self.microtubule.track(labeled)
                         
                 self.photo_tracked = self.photo_tracked.astype(np.uint8)
-                kernel = np.ones((2, 2), np.uint8)
+                # kernel = np.ones((2, 2), np.uint8)
 
-                self.photo_tracked = cv2.dilate(self.photo_tracked, kernel, iterations = 3)
-                self.photo_tracked = cv2.erode(self.photo_tracked, kernel, iterations = 1)
+                # self.photo_tracked = cv2.dilate(self.photo_tracked, kernel, iterations = 3)
+                # self.photo_tracked = cv2.erode(self.photo_tracked, kernel, iterations = 1)
 
                 self.photo_tracked[self.photo_tracked!=0] = 255
                 
@@ -133,7 +133,8 @@ class App:
         frame[frame > 255] = 255
 
         # Gaussian blur
-        frame = cv2.GaussianBlur(frame,(3,3),5)
+        # frame = cv2.GaussianBlur(frame,(3,3),5)
+        frame = cv2.GaussianBlur(frame,(9,9),5)
 
         # Convert to a type we can threshold with
         frame = frame.astype(np.uint8)
@@ -150,7 +151,7 @@ class App:
         frame = ImageEnhance.Sharpness(frame)
 
         frame = frame.enhance(sharpness)
-        
+      
         return frame
 
     # Segment Microtubule
@@ -165,15 +166,27 @@ class App:
         # Convert the frame to an nparray and set type to uint8
         frame = np.array(frame)
         frame = frame.astype(np.uint8)
+        
 
         # Run adaptive thresholding on the frame array
-        frame = cv2.adaptiveThreshold(frame, frame.max(), cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 15, -1)
+        frame = cv2.adaptiveThreshold(frame, frame.max(), cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 15, -1)
+       
 
+        kernel = np.ones((4, 4), np.uint8)
+        frame = cv2.morphologyEx(frame, cv2.MORPH_OPEN, kernel)
+
+        frame = cv2.morphologyEx(frame, cv2.MORPH_CLOSE, kernel)
+
+        frame = cv2.dilate(frame, kernel, iterations = 1)
+        # frame = cv2.dilate(frame, kernel, iterations = 1)
+      
         # Invert the frame array
-        frame[frame==255] = 1
-        frame[frame==0] = 255
-        frame[frame==1] = 0
-
+        # frame[frame==255] = 1
+        # frame[frame==0] = 255
+        # frame[frame==1] = 0
+        
+        # cv2.imshow('image', frame)
+        # cv2.waitKey(0)
         frame = np.transpose(frame)
 
         # Get all connected components of the frame 
@@ -215,10 +228,10 @@ class App:
         segmented_photo_tracked, computed_ends, self.slope, self.b = self.microtubule.track(label)
 
         segmented_photo_tracked = segmented_photo_tracked.astype(np.uint8)
-        kernel = np.ones((2, 2), np.uint8)
+        # kernel = np.ones((2, 2), np.uint8)
 
-        segmented_photo_tracked = cv2.dilate(segmented_photo_tracked, kernel, iterations = 2)
-        segmented_photo_tracked = cv2.erode(segmented_photo_tracked, kernel, iterations = 1)
+        # segmented_photo_tracked = cv2.dilate(segmented_photo_tracked, kernel, iterations = 2)
+        # segmented_photo_tracked = cv2.erode(segmented_photo_tracked, kernel, iterations = 1)
 
         segmented_photo_tracked[segmented_photo_tracked!=0] = 255
         # set our microtubule ends to the computed ends
@@ -281,6 +294,7 @@ class App:
         self.play_btn.destroy()
         self.pause_btn.destroy()
         self.reset_btn.destroy()
+        self.next_btn.destroy()
         self.allow_user_input = True
            
     def play_video(self):
@@ -341,6 +355,7 @@ class Microtuble:
         self.ends = ends
         self.slope = slope
         self.b = b
+        self.valid_points = None
 
         # This will track every set of ends we have so we can analyze later
         self.endsArray = [self.ends]
@@ -358,8 +373,9 @@ class Microtuble:
             x_actual = object_indices[0][i]
             y_calculated = self.slope * x_actual + self.b
             y_actual = object_indices[1][i]
-
-            difference = np.abs(y_calculated-y_actual)
+            
+            # difference = np.abs(y_calculated-y_actual)
+            difference = np.sqrt((y_calculated-y_actual)**2) 
             difference_all.append(difference)
 
         difference_all = np.array(difference_all)
@@ -449,7 +465,6 @@ class Microtuble:
             self.b = model.intercept_
 
 
-
         self.update_endpoints(new_object_indices, photo_tracked)
 
         # return thresholded image
@@ -461,6 +476,7 @@ class Microtuble:
         max_square_distance = 0
         max_pair = []
         points = np.transpose(points)
+
         for pair in combinations(points,2):
             if self.square_distance(*pair) > max_square_distance:
                 pair_slope = (pair[0][1]-pair[1][1])/(pair[0][0]-pair[1][0]+1e-9)
@@ -472,8 +488,6 @@ class Microtuble:
         
         if len(max_pair) > 0:         
             max_pair = np.array(max_pair)
-            print("end point 1 pixel value: ",photo_tracked[max_pair[0][0]][max_pair[0][1]])
-            print("end point 2 pixel value: ",photo_tracked[max_pair[1][0]][max_pair[1][1]])
 
             self.ends = max_pair
 

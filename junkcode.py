@@ -57,3 +57,16 @@
 
         # This is the pixel distance between point 1 and point 2
         # length_line = np.sqrt((x1-x0)**2 + (y1-y0)**2)
+
+
+        # sorted_points = np.sort(points)
+        # for i in range(len(sorted_points)):
+        #     pair = [sorted_points[i], sorted_points[-i-1]]
+        #     if sum((pair[0]-pair[1])**2) > max_square_distance:
+        #         pair_slope = (pair[0][1]-pair[1][1])/(pair[0][0]-pair[1][0]+1e-9)
+        #         slope_diff = np.abs(pair_slope-self.slope)
+        #         if slope_diff < 0.01:
+        #             if photo_tracked[pair[0][0]][pair[0][1]] != 0 and photo_tracked[pair[1][0]][pair[1][1]] != 0:
+        #                 max_square_distance = sum((pair[0]-pair[1])**2)
+        #                 max_pair = pair
+            
