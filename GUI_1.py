@@ -8,6 +8,8 @@ from itertools import combinations
 from sklearn import linear_model
 import numpy as np
 import math
+import matplotlib.pyplot as plt
+from scipy.spatial import distance
 
 
 # source: https://solarianprogrammer.com/2018/04/21/python-opencv-show-video-tkinter-window/
@@ -51,6 +53,7 @@ class App:
         # If it is not the end of the video, return True
         if current_frame == None:
             print("Algorithm has finished!")
+            self.microtubule.createGraphs()
 
         if current_frame != None:
             ret, frame = current_frame
@@ -67,19 +70,22 @@ class App:
                 self.photo = ImageTk.PhotoImage(image=frame)
                 self.canvas.create_image(0, 0, image=self.photo, anchor=tk.NW)
 
+                # track the microtubule
+                self.photo_tracked, self.microtubule_ends, self.slope, self.b, didUpdate = self.microtubule.track(labeled)
+                    
                 # Show endpoints and mid-sampling points
+                # Get the line ends 
+                self.x0 = self.microtubule_ends[0][0]
+                self.y0 = self.microtubule_ends[0][1]
+                self.x1 = self.microtubule_ends[1][0]
+                self.y1 = self.microtubule_ends[1][1]
+
                 self.canvas.create_oval(self.x0+5, self.y0+5, self.x0-5, self.y0-5, fill="blue", outline="#DDD", width=1)
                 self.canvas.create_oval(self.x1+5, self.y1+5, self.x1-5, self.y1-5, fill="blue", outline="#DDD", width=1)
                 self.canvas.create_oval(self.component_number_x+5, self.component_number_y+5, self.component_number_x-5, self.component_number_y-5, fill="red", outline="#DDD", width=1)
 
-                # track the microtubule
-                self.photo_tracked, self.microtubule_ends, self.slope, self.b = self.microtubule.track(labeled)
                         
                 self.photo_tracked = self.photo_tracked.astype(np.uint8)
-                # kernel = np.ones((2, 2), np.uint8)
-
-                # self.photo_tracked = cv2.dilate(self.photo_tracked, kernel, iterations = 3)
-                # self.photo_tracked = cv2.erode(self.photo_tracked, kernel, iterations = 1)
 
                 self.photo_tracked[self.photo_tracked!=0] = 255
                 
@@ -89,8 +95,8 @@ class App:
                 self.vid.frame_counter += 1
                 print(self.vid.frame_counter)
 
-            if not self.pause:
-                self.after_id = self.window.after(self.delay, self.update)
+                if not self.pause:
+                    self.after_id = self.window.after(self.delay, self.update)
     
     
     def show_file(self):
@@ -133,7 +139,6 @@ class App:
         frame[frame > 255] = 255
 
         # Gaussian blur
-        # frame = cv2.GaussianBlur(frame,(3,3),5)
         frame = cv2.GaussianBlur(frame,(9,9),5)
 
         # Convert to a type we can threshold with
@@ -177,16 +182,8 @@ class App:
 
         frame = cv2.morphologyEx(frame, cv2.MORPH_CLOSE, kernel)
 
-        frame = cv2.dilate(frame, kernel, iterations = 1)
-        # frame = cv2.dilate(frame, kernel, iterations = 1)
-      
-        # Invert the frame array
-        # frame[frame==255] = 1
-        # frame[frame==0] = 255
-        # frame[frame==1] = 0
-        
-        # cv2.imshow('image', frame)
-        # cv2.waitKey(0)
+        frame = cv2.dilate(frame, kernel, iterations = 1)      
+
         frame = np.transpose(frame)
 
         # Get all connected components of the frame 
@@ -225,13 +222,9 @@ class App:
         self.microtubule = Microtuble(self.microtubule_ends, self.slope, self.b)
 
         # Compute the ends given the user entered ends
-        segmented_photo_tracked, computed_ends, self.slope, self.b = self.microtubule.track(label)
+        segmented_photo_tracked, computed_ends, self.slope, self.b, didUpdate = self.microtubule.track(label)
 
         segmented_photo_tracked = segmented_photo_tracked.astype(np.uint8)
-        # kernel = np.ones((2, 2), np.uint8)
-
-        # segmented_photo_tracked = cv2.dilate(segmented_photo_tracked, kernel, iterations = 2)
-        # segmented_photo_tracked = cv2.erode(segmented_photo_tracked, kernel, iterations = 1)
 
         segmented_photo_tracked[segmented_photo_tracked!=0] = 255
         # set our microtubule ends to the computed ends
@@ -358,8 +351,35 @@ class Microtuble:
         self.valid_points = None
 
         # This will track every set of ends we have so we can analyze later
-        self.endsArray = [self.ends]
+        self.endsArray = []
+        self.endsArray.append(self.ends)
 
+    def createGraphs(self):
+        # Create our frame versus length graph
+        print("we are creating our graph")
+        lenEnds = len(self.endsArray)
+
+        x_length = list(range(1, lenEnds+1))
+        y_length = [self.euclidean_distance(x) for x in self.endsArray]
+
+        plt.figure(figsize=(9, 3))
+        plt.plot(x_length, y_length, "ro")
+        plt.ylabel("Distance Between Endpoints (Euclidean)")
+        plt.title("Length versus Frame")
+        
+        # Create our rate graph
+        x_rate = list(range(1, lenEnds))
+        y_rate = self.roc(y_length)
+
+        plt.figure(figsize=(9, 3))
+        plt.plot(x_rate, y_rate, "ro")
+        plt.ylabel("Rate of Change Between Endpoints (Percentage)")
+        plt.title("Rate of Change")
+
+        plt.show()
+
+
+    
     def track(self, photo_tracked):
 
 
@@ -399,7 +419,7 @@ class Microtuble:
         min_end_y = np.min([y0, y1]) - padding_y
         max_end_y = np.max([y0, y1]) + padding_y
 
-        slope_thresh = .2
+        slope_thresh = np.abs(.5 * self.slope)
 
 
         # Use mean of all differencces as threshold value, then threshold the tracked binary image
@@ -428,33 +448,6 @@ class Microtuble:
             if slope_deviation > slope_thresh:
                 photo_tracked[x_actual][y_actual] = 0
 
-
-        # run a second connected component
-
-        # photo_tracked = photo_tracked.astype(np.uint8)
-
-        # # Get all connected components of the frame 
-        # _, label = cv2.connectedComponents(photo_tracked)
-
-        # testCompX1 = math.floor((x0 + x1)/2)
-        # testCompY1 = math.floor((y0 + y1)/2)
-        # componentVal1 = photo_tracked[testCompX1-2: testCompX1+2, testCompY1-2:testCompY1+2].max()
-        
-        # if componentVal1 > 0:
-        #     self.component_number_x = testCompX1
-        #     self.component_number_y = testCompY1
-        # else:
-        #     print("in here")
-        #     self.component_number_x = testCompX1
-        #     self.component_number_y = math.floor(((self.slope*x0 + self.b) + (self.slope*x1 + self.b))/2)
-
-        # componentNumber = label[self.component_number_x-2: self.component_number_x+2, self.component_number_y-2:self.component_number_y+2].max()
-
-        # # Set everything that is not this component number to be the background
-        # label[label != componentNumber] = 0
-
-        # photo_tracked = label
-
         new_object_indices = np.where(photo_tracked!=0)
         x, y = photo_tracked.nonzero()
 
@@ -463,13 +456,17 @@ class Microtuble:
             model.fit(x.reshape([x.shape[0], 1]), y)
             self.slope = model.coef_[0]
             self.b = model.intercept_
+        else:
+            # let the user select 2 new points
+            photo_tracked = np.transpose(photo_tracked)
+            return photo_tracked, self.ends, self.slope, self.b, False
 
 
-        self.update_endpoints(new_object_indices, photo_tracked)
+        ret = self.update_endpoints(new_object_indices, photo_tracked)
 
         # return thresholded image
         photo_tracked = np.transpose(photo_tracked)
-        return photo_tracked, self.ends, self.slope, self.b
+        return photo_tracked, self.ends, self.slope, self.b, ret
 
     def update_endpoints(self, points, photo_tracked):
 
@@ -503,16 +500,32 @@ class Microtuble:
         
         if len(max_pair) > 0:         
             max_pair = np.array(max_pair)
-
             self.ends = max_pair
+            self.endsArray.append(max_pair.tolist())
+
+            return True
+        
+        max_pair = self.ends
+        self.endsArray.append(max_pair.tolist())
+
+
+        return False
 
  
 
 
     # https://stackoverflow.com/questions/31667070/max-distance-between-2-points-in-a-data-set-and-identifying-the-points
     def square_distance(self,x,y): 
-        return sum([(xi-yi)**2 for xi, yi in zip(x,y)])    
+        return sum([(xi-yi)**2 for xi, yi in zip(x,y)])
 
+    def euclidean_distance(self, points): 
+        return distance.euclidean(points[0], points[1])
+
+    def roc(self, y_dists):
+        y = []
+        for i in range (1, len(y_dists)):
+            y.append(((y_dists[i] - y_dists[i-1])/y_dists[i-1])*100)
+        return y
 
 
 if __name__ == "__main__":  
