@@ -474,17 +474,32 @@ class Microtuble:
     def update_endpoints(self, points, photo_tracked):
 
         max_square_distance = 0
-        max_pair = []
+        # max_pair = []
         points = np.transpose(points)
+        points_mean = np.mean(points, axis=0)
+        points_dist_diff = np.sum((points - points_mean)**2, axis=1)
+        points_max_dist = [0, 0]
+        max_pair = [[0,0], [0,0]]
 
-        for pair in combinations(points,2):
-            if self.square_distance(*pair) > max_square_distance:
-                pair_slope = (pair[0][1]-pair[1][1])/(pair[0][0]-pair[1][0]+1e-9)
-                slope_diff = np.abs(pair_slope-self.slope)
-                if slope_diff < 0.01:
-                    if photo_tracked[pair[0][0]][pair[0][1]] != 0 and photo_tracked[pair[1][0]][pair[1][1]] != 0:
-                        max_square_distance = self.square_distance(*pair)
-                        max_pair = pair
+        for i in range(len(points_dist_diff)):
+            if points[i][0] < points_mean[0]: # points on left side of mean point
+                if points_max_dist[0] < points_dist_diff[i]:
+                    points_max_dist[0] = points_dist_diff[i]
+                    max_pair[0] = points[i]
+            elif points[i][0] > points_mean[0]:
+                if points_max_dist[1] < points_dist_diff[i]:
+                    points_max_dist[1] = points_dist_diff[i]
+                    max_pair[1] = points[i]
+        
+        
+        # for pair in combinations(points,2):
+        #     if self.square_distance(*pair) > max_square_distance:
+        #         pair_slope = (pair[0][1]-pair[1][1])/(pair[0][0]-pair[1][0]+1e-9)
+        #         slope_diff = np.abs(pair_slope-self.slope)
+        #         if slope_diff < 0.01:
+        #             if photo_tracked[pair[0][0]][pair[0][1]] != 0 and photo_tracked[pair[1][0]][pair[1][1]] != 0:
+        #                 max_square_distance = self.square_distance(*pair)
+        #                 max_pair = pair
         
         if len(max_pair) > 0:         
             max_pair = np.array(max_pair)
