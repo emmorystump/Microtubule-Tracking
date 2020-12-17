@@ -87,12 +87,7 @@ class App:
                 self.photo_tracked = self.photo_tracked.astype(np.uint8)
 
                 self.photo_tracked[self.photo_tracked!=0] = 255
-<<<<<<< HEAD
                 
-=======
-                # cv2.imshow('image',self.photo_tracked)
-                # cv2.waitKey(0)
->>>>>>> dc4ea727bc08d29a0f73e91004d5e5c3f537c607
                 self.photo_tracked = ImageTk.PhotoImage(image=Image.fromarray(self.photo_tracked))
                 self.canvas_tracked.create_image(0, 0, image=self.photo_tracked, anchor=tk.NW)
 
@@ -148,7 +143,7 @@ class App:
         # Convert to a type we can threshold with
         frame = frame.astype(np.uint8)
 
-        frame = cv2.bilateralFilter(frame ,7,70,70)
+        frame = cv2.bilateralFilter(frame ,9,70,70)
 
 
         # Convert to image
@@ -164,7 +159,15 @@ class App:
 
         frame = frame.enhance(sharpness)
 
-        # FROM HERE
+
+        frame = Image.fromarray(np.uint8(frame))
+      
+        return frame
+
+    # Segment Microtubule
+    def display_selected_microtubule(self, frame):
+
+                # FROM HERE
         frame = np.array(frame)
         frame = frame.astype(np.uint8)
 
@@ -175,7 +178,7 @@ class App:
         frame = np.array(frame)
         frame = frame.astype(np.uint8)
 
-        frame = cv2.bilateralFilter(frame ,9,70,70)
+        frame = cv2.bilateralFilter(frame ,11,70,70)
 
         kernel = np.ones((3, 3), np.uint8)
 
@@ -187,13 +190,6 @@ class App:
         frame = frame.astype(np.uint8)
 
         #tp here PLACE BACK IN DISPLAY
-
-        frame = Image.fromarray(np.uint8(frame))
-      
-        return frame
-
-    # Segment Microtubule
-    def display_selected_microtubule(self, frame):
 
         # Get the line ends 
         self.x0 = self.microtubule_ends[0][0]
