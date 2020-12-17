@@ -41,6 +41,8 @@ class App:
         self.load_btn.pack(pady=2, padx=5)
 
         self.pause = False
+        self.reselect = False
+
         self.nextFrame = False
         self.delay = 2000
 
@@ -90,8 +92,9 @@ class App:
                 self.x1 = self.microtubule_ends[1][0]
                 self.y1 = self.microtubule_ends[1][1]
 
-                self.canvas.create_oval(self.x0+5, self.y0+5, self.x0-5, self.y0-5, fill="blue", outline="#DDD", width=1)
-                self.canvas.create_oval(self.x1+5, self.y1+5, self.x1-5, self.y1-5, fill="blue", outline="#DDD", width=1)
+                if self.reselect == False:
+                    self.canvas.create_oval(self.x0+5, self.y0+5, self.x0-5, self.y0-5, fill="blue", outline="#DDD", width=1)
+                    self.canvas.create_oval(self.x1+5, self.y1+5, self.x1-5, self.y1-5, fill="blue", outline="#DDD", width=1)
 
                         
                 self.photo_tracked = self.photo_tracked.astype(np.uint8)
@@ -103,6 +106,9 @@ class App:
 
                 self.vid.frame_counter += 1
                 print(self.vid.frame_counter)
+
+                if self.reselect:
+                    self.microtubule_ends = []
 
                 if not self.pause:
                     self.window.after(self.delay, self.update)
@@ -117,8 +123,13 @@ class App:
 
         self.play_btn = Button(self.window, text="Play", command=self.play_video, relief="flat", bg="#696969", fg="gray", font=("Courier", 12),width=20, height=2)
         self.play_btn.pack(pady=1, padx=5)
+
         self.pause_btn = Button(self.window, text="Pause", command=self.pause_video,  relief="flat", bg="#696969", fg="gray", font=("Courier", 12),width=20, height=2)
         self.pause_btn.pack(pady=1, padx=10)
+
+        self.pause_btn = Button(self.window, text="Reselect Endpoints", command=self.reselect_endpoints,  relief="flat", bg="#696969", fg="gray", font=("Courier", 12),width=20, height=2)
+        self.pause_btn.pack(pady=1, padx=10)
+
         self.reset_btn = Button(self.window, text="Reset", command=self.reset,  relief="flat", bg="#696969", fg="gray", font=("Courier", 12),width=20, height=2)
         self.reset_btn.pack(pady=1, padx=15)
 
@@ -303,9 +314,14 @@ class App:
                 self.number_user_clicks = 0
 
                 # show the first frame
-                labeled = self.display_selected_microtubule(self.first_frame)
+                if self.reselect == False:
+                    labeled = self.display_selected_microtubule(self.first_frame)
+                    self.initiate_track(labeled)
+                else:
+                    self.reselect = False 
+                    self.microtubule.updateEndpoints(self.microtubule_ends)
+                    self.update()
 
-                self.initiate_track(labeled)
 
                 
     def reset(self):
@@ -333,6 +349,12 @@ class App:
 
     def pause_video(self):           
         self.pause = True
+
+    def reselect_endpoints(self):
+        self.pause = True
+        self.reselect = True
+        self.allow_user_input = True
+        self.number_user_clicks = 0
     
 
 
@@ -529,6 +551,13 @@ class Microtuble:
 
     def getLineVals(self):
         return self.slope, self.b
+
+
+    def updateEndpoints(self, points):
+        self.ends = points
+        self.slope = (self.ends[1][1] - self.ends[0][1]) / (self.ends[1][0] - self.ends[0][0])
+        self.b = self.ends[1][1] - (self.slope * self.ends[1][0])
+
 
 
 if __name__ == "__main__":  
