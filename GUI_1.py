@@ -88,8 +88,8 @@ class App:
                 self.photo_tracked = self.photo_tracked.astype(np.uint8)
 
                 self.photo_tracked[self.photo_tracked!=0] = 255
-                cv2.imshow('image',self.photo_tracked)
-                cv2.waitKey(0)
+                # cv2.imshow('image',self.photo_tracked)
+                # cv2.waitKey(0)
                 self.photo_tracked = ImageTk.PhotoImage(image=Image.fromarray(self.photo_tracked))
                 self.canvas_tracked.create_image(0, 0, image=self.photo_tracked, anchor=tk.NW)
 
