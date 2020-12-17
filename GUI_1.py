@@ -409,25 +409,8 @@ class Microtuble:
 
         # plug in all white pixels into our line equation, if the y value is significantly different than its actual y value, we get rid of it
         object_indices = np.where(photo_tracked != 0)
-        difference_all = []
 
-        # Get all y differences
-        for i in range(len(object_indices[0])):
-            
-            x_actual = object_indices[0][i]
-            y_calculated = self.slope * x_actual + self.b
-            y_actual = object_indices[1][i]
-            
-            # difference = np.abs(y_calculated-y_actual)
-            difference = np.sqrt((y_calculated-y_actual)**2) 
-            difference_all.append(difference)
-
-        difference_all = np.array(difference_all)
-        thresh_value = np.mean(difference_all)
-        thresh_std = np.std(difference_all)
-        thresh_value = thresh_value - 0.5*thresh_std
-
-        print(len(object_indices[0]), photo_tracked.shape)
+        b_thresh = 6
         
         padding_x = 20
         padding_y = 20
@@ -443,36 +426,22 @@ class Microtuble:
         min_end_y = np.min([y0, y1]) - padding_y
         max_end_y = np.max([y0, y1]) + padding_y
 
-        slope_thresh = .2
-        if self.slope > 2:
-            slope_thresh = 2
-
-
-        # Use mean of all differencces as threshold value, then threshold the tracked binary image
         for i in range(len(object_indices[0])):
-            difference = difference_all[i]
             x_actual = object_indices[0][i]
-            y_calculated = self.slope * x_actual + self.b
+
+            y_lower = self.slope * x_actual + (self.b-b_thresh)
+            y_upper = self.slope * x_actual + (self.b+b_thresh)
+
             y_actual = object_indices[1][i]
-            
-            if difference > thresh_value:
+
+            if y_actual < y_lower or y_actual > y_upper:
                 photo_tracked[x_actual][y_actual] = 0
+
             if x_actual < min_end_x or x_actual > max_end_x:
                 photo_tracked[x_actual][y_actual] = 0
             if y_actual < min_end_y or y_actual > max_end_y:
                 photo_tracked[x_actual][y_actual] = 0
 
-            # If the slope of y_actual and the old endpoint deviates by a significant amount get rid of it
-            slope0 = (y0-y_actual)/(x0-x_actual+1e-9)
-            slope1 = (y1-y_actual)/(x1-x_actual+1e-9)
-
-            slope0 = np.abs(slope0 - self.slope)
-            slope1 = np.abs(slope1 - self.slope)
-
-            slope_deviation = np.max([slope0, slope1])
-
-            if slope_deviation > slope_thresh:
-                photo_tracked[x_actual][y_actual] = 0
 
         new_object_indices = np.where(photo_tracked!=0)
         x, y = photo_tracked.nonzero()
