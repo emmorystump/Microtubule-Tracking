@@ -220,9 +220,9 @@ class App:
             print(m)
             m, c= self.microtubule.getLineVals()
         
-        x_range = np.arange(np.min([self.x0, self.x1]), np.max([self.x0, self.x1]), 2)
-
         maxRange = 2
+
+        x_range = np.arange(np.min([self.x0, self.x1]) + maxRange, np.max([self.x0, self.x1]) - maxRange, 2)
 
         component_values = [label[x-maxRange: x+maxRange, math.floor(m*x+c)-maxRange:math.floor(m*x+c)+maxRange].max() for x in x_range]
         
