@@ -66,6 +66,16 @@ class App:
                 # Get our component
                 labeled = self.display_selected_microtubule(frame)
 
+                labeled = np.array(labeled)
+                labeled = labeled.astype(np.uint8)
+
+                kernel = np.ones((3, 3), np.uint8)
+
+                labeled = cv2.dilate(labeled, kernel, iterations = 1) 
+
+                # labeled = Image.fromarray(np.uint8(labeled))
+
+
                 # show image
                 self.photo = ImageTk.PhotoImage(image=frame)
                 self.canvas.create_image(0, 0, image=self.photo, anchor=tk.NW)
@@ -151,7 +161,7 @@ class App:
         frame_enhanced = ImageEnhance.Contrast(converted_frame_img)
 
         # Enhance contrast
-        contrast = 2.5
+        contrast = 3
         frame = frame_enhanced.enhance(contrast)
 
         sharpness = 3
@@ -379,10 +389,11 @@ class Microtuble:
         x_length = list(range(1, lenEnds+1))
         y_length = [self.euclidean_distance(x) for x in self.endsArray]
         m, c = np.polyfit(x_length, y_length, 1)
+        y_length_projection = [m*x+c for x in x_length]
 
         plt.figure(figsize=(9, 3))
         plt.plot(x_length, y_length, "ro")
-        # plt.plot(x_length, m*x_length+c)
+        plt.plot(x_length, y_length_projection)
 
         plt.ylabel("Distance Between Endpoints (Euclidean)")
         plt.title("Length versus Frame")
@@ -391,11 +402,14 @@ class Microtuble:
         x_rate = list(range(1, lenEnds))
         y_rate = self.roc(y_length)
 
+
         m, c = np.polyfit(x_rate, y_rate, 1)
+        y_rate_projection = [m*x+c for x in x_rate]
+
 
         plt.figure(figsize=(9, 3))
         plt.plot(x_rate, y_rate, "ro")
-        # plt.plot(x_rate, m*x_rate+c)
+        plt.plot(x_rate, y_rate_projection)
 
         plt.ylabel("Rate of Change Between Endpoints (Percentage)")
         plt.title("Rate of Change")
@@ -410,10 +424,10 @@ class Microtuble:
         # plug in all white pixels into our line equation, if the y value is significantly different than its actual y value, we get rid of it
         object_indices = np.where(photo_tracked != 0)
 
-        b_thresh = 6
+        b_thresh = 3
         
-        padding_x = 20
-        padding_y = 20
+        padding_x = 10
+        padding_y = 10
 
         x0 = self.ends[0][0]
         y0 = self.ends[0][1]
