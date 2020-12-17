@@ -361,9 +361,12 @@ class Microtuble:
 
         x_length = list(range(1, lenEnds+1))
         y_length = [self.euclidean_distance(x) for x in self.endsArray]
+        m, c = np.polyfit(x_length, y_length, 1)
 
         plt.figure(figsize=(9, 3))
         plt.plot(x_length, y_length, "ro")
+        # plt.plot(x_length, m*x_length+c)
+
         plt.ylabel("Distance Between Endpoints (Euclidean)")
         plt.title("Length versus Frame")
         
@@ -371,8 +374,12 @@ class Microtuble:
         x_rate = list(range(1, lenEnds))
         y_rate = self.roc(y_length)
 
+        m, c = np.polyfit(x_rate, y_rate, 1)
+
         plt.figure(figsize=(9, 3))
         plt.plot(x_rate, y_rate, "ro")
+        # plt.plot(x_rate, m*x_rate+c)
+
         plt.ylabel("Rate of Change Between Endpoints (Percentage)")
         plt.title("Rate of Change")
 
@@ -419,7 +426,7 @@ class Microtuble:
         min_end_y = np.min([y0, y1]) - padding_y
         max_end_y = np.max([y0, y1]) + padding_y
 
-        slope_thresh = np.abs(.5 * self.slope)
+        slope_thresh = .2
 
 
         # Use mean of all differencces as threshold value, then threshold the tracked binary image
