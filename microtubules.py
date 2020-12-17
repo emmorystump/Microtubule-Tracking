@@ -88,8 +88,8 @@ class App:
                 self.photo_tracked = self.photo_tracked.astype(np.uint8)
 
                 self.photo_tracked[self.photo_tracked!=0] = 255
-                cv2.imshow('image',self.photo_tracked)
-                cv2.waitKey(0)
+                # cv2.imshow('image',self.photo_tracked)
+                # cv2.waitKey(0)
                 self.photo_tracked = ImageTk.PhotoImage(image=Image.fromarray(self.photo_tracked))
                 self.canvas_tracked.create_image(0, 0, image=self.photo_tracked, anchor=tk.NW)
 
@@ -379,11 +379,50 @@ class Microtuble:
         plt.title("Rate of Change")
 
         plt.show()
-
     def sort_points(self, points):
         # sort points so that the left most point is first in list
         sorted_points = sorted(points , key=lambda k: [k[0], k[1]])
-    
+        return sorted_points
+
+    # https://github.com/samfoy/GrahamScan/blob/master/graham_scan.py
+
+    def get_orientation(self, a, b, c):
+        # >0 clockwise, <0 counter clockwise, 0 co-linear
+        return  (b[1]-a[1]) * (c[0]-a[0]) - (b[0]-a[0]) * (c[1]-a[1])
+
+    def compute_hull(self, points): # input sorted points
+        convex_hull = []
+        
+        for p in points:
+            while len(convex_hull) > 1 and self.get_orientation(convex_hull[-2], convex_hull[-1], p) >= 0:
+                convex_hull.pop()
+            convex_hull.append(p)
+        # for i in points[1:]:
+        #     if i[0] < min_x:
+        #         min_x = i[0]
+        #         start_pt = i
+        # convex_hull.append(start_pt)
+        # max_dist_pt = []
+        # pt = start_pt.copy()
+        # while max_dist_pt is not start_pt:
+        #     for p in points:
+        #         if p is start_pt:
+        #             continue
+        #         else:
+        #             p1 = p.copy()
+        #             break
+        #     max_dist_pt = p1.copy()
+        #     for p in points:
+        #         if p is pt or p is p1:
+        #             continue
+        #         orientation = self.get_orientation(start_pt, max_dist_pt, p)
+        #         if orientation > 0:
+        #             max_dist_pt = p
+        #     convex_hull.append(max_dist_pt)
+        #     pt = max_dist_pt
+
+        return convex_hull
+
     def track(self, photo_tracked):
 
 
@@ -464,10 +503,12 @@ class Microtuble:
             # let the user select 2 new points
             photo_tracked = np.transpose(photo_tracked)
             return photo_tracked, self.ends, self.slope, self.b, False
-
-
+        
+        sorted_points = self.sort_points(np.transpose(new_object_indices))
+        convex_hull = self.compute_hull(sorted_points)
+        print(convex_hull)
         ret = self.update_endpoints(new_object_indices, photo_tracked)
-
+        
         # return thresholded image
         photo_tracked = np.transpose(photo_tracked)
         return photo_tracked, self.ends, self.slope, self.b, ret
