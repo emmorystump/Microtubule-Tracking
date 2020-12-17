@@ -10,6 +10,7 @@ import numpy as np
 import math
 import matplotlib.pyplot as plt
 from scipy.spatial import distance
+from collections import Counter
 
 
 # source: https://solarianprogrammer.com/2018/04/21/python-opencv-show-video-tkinter-window/
@@ -41,7 +42,7 @@ class App:
 
         self.pause = False
         self.nextFrame = False
-        self.after_id = 0
+        self.delay = 2000
 
 
         self.window.mainloop()
@@ -49,8 +50,7 @@ class App:
     def update(self):
         # Get the current frame
         current_frame = self.vid.get_frame()
-
-        # If it is not the end of the video, return True
+        
         if current_frame == None:
             print("Algorithm has finished!")
             self.microtubule.createGraphs()
@@ -82,14 +82,12 @@ class App:
 
                 self.canvas.create_oval(self.x0+5, self.y0+5, self.x0-5, self.y0-5, fill="blue", outline="#DDD", width=1)
                 self.canvas.create_oval(self.x1+5, self.y1+5, self.x1-5, self.y1-5, fill="blue", outline="#DDD", width=1)
-                self.canvas.create_oval(self.component_number_x+5, self.component_number_y+5, self.component_number_x-5, self.component_number_y-5, fill="red", outline="#DDD", width=1)
 
                         
                 self.photo_tracked = self.photo_tracked.astype(np.uint8)
 
                 self.photo_tracked[self.photo_tracked!=0] = 255
-                cv2.imshow('image',self.photo_tracked)
-                cv2.waitKey(0)
+                
                 self.photo_tracked = ImageTk.PhotoImage(image=Image.fromarray(self.photo_tracked))
                 self.canvas_tracked.create_image(0, 0, image=self.photo_tracked, anchor=tk.NW)
 
@@ -97,7 +95,7 @@ class App:
                 print(self.vid.frame_counter)
 
                 if not self.pause:
-                    self.after_id = self.window.after(self.delay, self.update)
+                    self.window.after(self.delay, self.update)
     
     
     def show_file(self):
@@ -140,23 +138,52 @@ class App:
         frame[frame > 255] = 255
 
         # Gaussian blur
-        frame = cv2.GaussianBlur(frame,(9,9),5)
+        # frame = cv2.GaussianBlur(frame,(5,5),5)
 
         # Convert to a type we can threshold with
         frame = frame.astype(np.uint8)
+
+        frame = cv2.bilateralFilter(frame ,7,70,70)
+
 
         # Convert to image
         converted_frame_img = Image.fromarray(np.uint8(frame))
         frame_enhanced = ImageEnhance.Contrast(converted_frame_img)
 
         # Enhance contrast
-        contrast = 2
+        contrast = 2.5
         frame = frame_enhanced.enhance(contrast)
 
-        sharpness = 5
+        sharpness = 3
         frame = ImageEnhance.Sharpness(frame)
 
         frame = frame.enhance(sharpness)
+
+        # FROM HERE
+        frame = np.array(frame)
+        frame = frame.astype(np.uint8)
+
+        # frame = cv2.Canny(frame, 200, 100)
+
+        frame = cv2.adaptiveThreshold(frame, frame.max(), cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 9, -1)
+
+        frame = np.array(frame)
+        frame = frame.astype(np.uint8)
+
+        frame = cv2.bilateralFilter(frame ,9,70,70)
+
+        kernel = np.ones((3, 3), np.uint8)
+
+        frame = cv2.erode(frame, kernel, iterations = 1)   
+        frame = cv2.dilate(frame, kernel, iterations = 2)   
+        frame = cv2.morphologyEx(frame, cv2.MORPH_OPEN, kernel)
+        frame = cv2.morphologyEx(frame, cv2.MORPH_OPEN, kernel)
+
+        frame = frame.astype(np.uint8)
+
+        #tp here PLACE BACK IN DISPLAY
+
+        frame = Image.fromarray(np.uint8(frame))
       
         return frame
 
@@ -168,41 +195,39 @@ class App:
         self.y0 = self.microtubule_ends[0][1]
         self.x1 = self.microtubule_ends[1][0]
         self.y1 = self.microtubule_ends[1][1]
-
-        # Convert the frame to an nparray and set type to uint8
-        frame = np.array(frame)
-        frame = frame.astype(np.uint8)
-        
-
-        # Run adaptive thresholding on the frame array
-        frame = cv2.adaptiveThreshold(frame, frame.max(), cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 15, -1)
-       
-
-        kernel = np.ones((3, 3), np.uint8)
-        frame = cv2.morphologyEx(frame, cv2.MORPH_OPEN, kernel)
-
-        frame = cv2.morphologyEx(frame, cv2.MORPH_CLOSE, kernel)
-
-        frame = cv2.dilate(frame, kernel, iterations = 1)      
-
+   
         frame = np.transpose(frame)
 
-        
         # Get all connected components of the frame 
-        _, label = cv2.connectedComponents(frame)
+        _, label = cv2.connectedComponents(frame, connectivity=8)
+
+        # If we have already analyzed the first frame, get the slope and b from microtubule
+        m = (self.y1-self.y0)/(self.x1-self.x0)
+        c = self.y0 - (m*self.x0)
+
+        if self.vid.frame_counter > 0:
+            m, c= self.microtubule.getLineVals()
+        
+        x_range = np.arange(np.min([self.x0, self.x1]), np.max([self.x0, self.x1]), 2)
 
         maxRange = 2
-        testCompX1 = math.floor((self.x0 + self.x1)/2)
-        testCompY1 = math.floor((self.y0 + self.y1)/2)
-        componentVal1 = frame[testCompX1-maxRange: testCompX1+maxRange, testCompY1-maxRange:testCompY1+maxRange].max()
-        
-        if componentVal1 > 0:
-            self.component_number_x = testCompX1
-            self.component_number_y = testCompY1
-        else: 
-            maxRange = 5
 
-        componentNumber = label[self.component_number_x-maxRange: self.component_number_x+maxRange, self.component_number_y-maxRange:self.component_number_y+maxRange].max()
+        component_values = [label[x-maxRange: x+maxRange, math.floor(m*x+c)-maxRange:math.floor(m*x+c)+maxRange].max() for x in x_range]
+        
+        data = Counter(component_values)
+        componentNumber = data.most_common(1)[0][0]
+
+        # testCompX1 = math.floor((self.x0 + self.x1)/2)
+        # testCompY1 = math.floor((self.y0 + self.y1)/2)
+        # componentVal1 = frame[testCompX1-maxRange: testCompX1+maxRange, testCompY1-maxRange:testCompY1+maxRange].max()
+        
+        # if componentVal1 > 0:
+        #     self.component_number_x = testCompX1
+        #     self.component_number_y = testCompY1
+        # else: 
+        #     maxRange = 5
+
+        # componentNumber = label[self.component_number_x-maxRange: self.component_number_x+maxRange, self.component_number_y-maxRange:self.component_number_y+maxRange].max()
 
         # Set everything that is not this component number to be the background
         label[label != componentNumber] = 0
@@ -480,44 +505,33 @@ class Microtuble:
     def update_endpoints(self, points, photo_tracked):
 
         max_square_distance = 0
-        max_pair = []
+        # max_pair = []
         points = np.transpose(points)
-        # points_mean = np.mean(points, axis=0)
-        # points_dist_diff = np.sum((points - points_mean)**2, axis=1)
-        # points_max_dist = [0, 0]
-        # max_pair = [[0,0], [0,0]]
+        points_mean = np.mean(points, axis=0)
+        points_dist_diff = np.sum((points - points_mean)**2, axis=1)
+        points_max_dist = [0, 0]
+        max_pair = [[0,0], [0,0]]
 
-        # for i in range(len(points_dist_diff)):
-        #     if points[i][0] < points_mean[0]: # points on left side of mean point
-        #         if points_max_dist[0] < points_dist_diff[i]:
-        #             points_max_dist[0] = points_dist_diff[i]
-        #             max_pair[0] = points[i]
-        #     elif points[i][0] > points_mean[0]:
-        #         if points_max_dist[1] < points_dist_diff[i]:
-        #             points_max_dist[1] = points_dist_diff[i]
-        #             max_pair[1] = points[i]
+        for i in range(len(points_dist_diff)):
+            if points[i][0] < points_mean[0]: # points on left side of mean point
+                if points_max_dist[0] < points_dist_diff[i]:
+                    points_max_dist[0] = points_dist_diff[i]
+                    max_pair[0] = points[i]
+            elif points[i][0] > points_mean[0]:
+                if points_max_dist[1] < points_dist_diff[i]:
+                    points_max_dist[1] = points_dist_diff[i]
+                    max_pair[1] = points[i]
         
-        
-        for pair in combinations(points,2):
-            if self.square_distance(*pair) > max_square_distance:
-                pair_slope = (pair[0][1]-pair[1][1])/(pair[0][0]-pair[1][0]+1e-9)
-                slope_diff = np.abs(pair_slope-self.slope)
-                if slope_diff < 0.01:
-                    if photo_tracked[pair[0][0]][pair[0][1]] != 0 and photo_tracked[pair[1][0]][pair[1][1]] != 0:
-                        max_square_distance = self.square_distance(*pair)
-                        max_pair = pair
         
         if len(max_pair) > 0:         
             max_pair = np.array(max_pair)
             self.ends = max_pair
-            # self.endsArray.append(max_pair.tolist())
-            self.endsArray.append(max_pair)
+            self.endsArray.append(max_pair.tolist())
+
             return True
         
         max_pair = self.ends
-        # self.endsArray.append(max_pair.tolist())
-
-        self.endsArray.append(max_pair)
+        self.endsArray.append(max_pair.tolist())
 
 
         return False
@@ -537,6 +551,9 @@ class Microtuble:
         for i in range (1, len(y_dists)):
             y.append(((y_dists[i] - y_dists[i-1])/y_dists[i-1])*100)
         return y
+
+    def getLineVals(self):
+        return self.slope, self.b
 
 
 if __name__ == "__main__":  
