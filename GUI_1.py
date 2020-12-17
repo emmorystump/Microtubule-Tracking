@@ -207,6 +207,7 @@ class App:
         c = self.y0 - (m*self.x0)
 
         if self.vid.frame_counter > 0:
+            print(m)
             m, c= self.microtubule.getLineVals()
         
         x_range = np.arange(np.min([self.x0, self.x1]), np.max([self.x0, self.x1]), 2)
@@ -217,18 +218,6 @@ class App:
         
         data = Counter(component_values)
         componentNumber = data.most_common(1)[0][0]
-
-        # testCompX1 = math.floor((self.x0 + self.x1)/2)
-        # testCompY1 = math.floor((self.y0 + self.y1)/2)
-        # componentVal1 = frame[testCompX1-maxRange: testCompX1+maxRange, testCompY1-maxRange:testCompY1+maxRange].max()
-        
-        # if componentVal1 > 0:
-        #     self.component_number_x = testCompX1
-        #     self.component_number_y = testCompY1
-        # else: 
-        #     maxRange = 5
-
-        # componentNumber = label[self.component_number_x-maxRange: self.component_number_x+maxRange, self.component_number_y-maxRange:self.component_number_y+maxRange].max()
 
         # Set everything that is not this component number to be the background
         label[label != componentNumber] = 0
@@ -455,6 +444,8 @@ class Microtuble:
         max_end_y = np.max([y0, y1]) + padding_y
 
         slope_thresh = .2
+        if self.slope > 2:
+            slope_thresh = 2
 
 
         # Use mean of all differencces as threshold value, then threshold the tracked binary image
