@@ -41,6 +41,8 @@ class App:
         self.load_btn.pack(pady=2, padx=5)
 
         self.pause = False
+        self.reselect = False
+
         self.nextFrame = False
         self.delay = 2000
 
@@ -66,6 +68,16 @@ class App:
                 # Get our component
                 labeled = self.display_selected_microtubule(frame)
 
+                labeled = np.array(labeled)
+                labeled = labeled.astype(np.uint8)
+
+                kernel = np.ones((3, 3), np.uint8)
+
+                labeled = cv2.dilate(labeled, kernel, iterations = 1) 
+
+                # labeled = Image.fromarray(np.uint8(labeled))
+
+
                 # show image
                 self.photo = ImageTk.PhotoImage(image=frame)
                 self.canvas.create_image(0, 0, image=self.photo, anchor=tk.NW)
@@ -80,8 +92,9 @@ class App:
                 self.x1 = self.microtubule_ends[1][0]
                 self.y1 = self.microtubule_ends[1][1]
 
-                self.canvas.create_oval(self.x0+5, self.y0+5, self.x0-5, self.y0-5, fill="blue", outline="#DDD", width=1)
-                self.canvas.create_oval(self.x1+5, self.y1+5, self.x1-5, self.y1-5, fill="blue", outline="#DDD", width=1)
+                if self.reselect == False:
+                    self.canvas.create_oval(self.x0+5, self.y0+5, self.x0-5, self.y0-5, fill="blue", outline="#DDD", width=1)
+                    self.canvas.create_oval(self.x1+5, self.y1+5, self.x1-5, self.y1-5, fill="blue", outline="#DDD", width=1)
 
                         
                 # self.photo_tracked = self.photo_tracked.astype(np.uint8)
@@ -93,6 +106,9 @@ class App:
 
                 self.vid.frame_counter += 1
                 print(self.vid.frame_counter)
+
+                if self.reselect:
+                    self.microtubule_ends = []
 
                 if not self.pause:
                     self.window.after(self.delay, self.update)
@@ -107,8 +123,13 @@ class App:
 
         self.play_btn = Button(self.window, text="Play", command=self.play_video, relief="flat", bg="#696969", fg="gray", font=("Courier", 12),width=20, height=2)
         self.play_btn.pack(pady=1, padx=5)
+
         self.pause_btn = Button(self.window, text="Pause", command=self.pause_video,  relief="flat", bg="#696969", fg="gray", font=("Courier", 12),width=20, height=2)
         self.pause_btn.pack(pady=1, padx=10)
+
+        self.pause_btn = Button(self.window, text="Reselect Endpoints", command=self.reselect_endpoints,  relief="flat", bg="#696969", fg="gray", font=("Courier", 12),width=20, height=2)
+        self.pause_btn.pack(pady=1, padx=10)
+
         self.reset_btn = Button(self.window, text="Reset", command=self.reset,  relief="flat", bg="#696969", fg="gray", font=("Courier", 12),width=20, height=2)
         self.reset_btn.pack(pady=1, padx=15)
 
@@ -153,7 +174,7 @@ class App:
         frame_enhanced = ImageEnhance.Contrast(converted_frame_img)
 
         # Enhance contrast
-        contrast = 2.5
+        contrast = 3
         frame = frame_enhanced.enhance(contrast)
 
         sharpness = 3
@@ -212,9 +233,9 @@ class App:
             print(m)
             m, c= self.microtubule.getLineVals()
         
-        x_range = np.arange(np.min([self.x0, self.x1]), np.max([self.x0, self.x1]), 2)
-
         maxRange = 2
+
+        x_range = np.arange(np.min([self.x0, self.x1]) + maxRange, np.max([self.x0, self.x1]) - maxRange, 2)
 
         component_values = [label[x-maxRange: x+maxRange, math.floor(m*x+c)-maxRange:math.floor(m*x+c)+maxRange].max() for x in x_range]
         
@@ -295,9 +316,14 @@ class App:
                 self.number_user_clicks = 0
 
                 # show the first frame
-                labeled = self.display_selected_microtubule(self.first_frame)
+                if self.reselect == False:
+                    labeled = self.display_selected_microtubule(self.first_frame)
+                    self.initiate_track(labeled)
+                else:
+                    self.reselect = False 
+                    self.microtubule.updateEndpoints(self.microtubule_ends)
+                    self.update()
 
-                self.initiate_track(labeled)
 
                 
     def reset(self):
@@ -325,6 +351,12 @@ class App:
 
     def pause_video(self):           
         self.pause = True
+
+    def reselect_endpoints(self):
+        self.pause = True
+        self.reselect = True
+        self.allow_user_input = True
+        self.number_user_clicks = 0
     
 
 
@@ -381,10 +413,11 @@ class Microtuble:
         x_length = list(range(1, lenEnds+1))
         y_length = [self.euclidean_distance(x) for x in self.endsArray]
         m, c = np.polyfit(x_length, y_length, 1)
+        y_length_projection = [m*x+c for x in x_length]
 
         plt.figure(figsize=(9, 3))
         plt.plot(x_length, y_length, "ro")
-        # plt.plot(x_length, m*x_length+c)
+        plt.plot(x_length, y_length_projection)
 
         plt.ylabel("Distance Between Endpoints (Euclidean)")
         plt.title("Length versus Frame")
@@ -393,11 +426,14 @@ class Microtuble:
         x_rate = list(range(1, lenEnds))
         y_rate = self.roc(y_length)
 
+
         m, c = np.polyfit(x_rate, y_rate, 1)
+        y_rate_projection = [m*x+c for x in x_rate]
+
 
         plt.figure(figsize=(9, 3))
         plt.plot(x_rate, y_rate, "ro")
-        # plt.plot(x_rate, m*x_rate+c)
+        plt.plot(x_rate, y_rate_projection)
 
         plt.ylabel("Rate of Change Between Endpoints (Percentage)")
         plt.title("Rate of Change")
@@ -412,10 +448,10 @@ class Microtuble:
         # plug in all white pixels into our line equation, if the y value is significantly different than its actual y value, we get rid of it
         object_indices = np.where(photo_tracked != 0)
 
-        b_thresh = 6
+        b_thresh = 3
         
-        padding_x = 20
-        padding_y = 20
+        padding_x = 10
+        padding_y = 10
 
         x0 = self.ends[0][0]
         y0 = self.ends[0][1]
@@ -517,6 +553,13 @@ class Microtuble:
 
     def getLineVals(self):
         return self.slope, self.b
+
+
+    def updateEndpoints(self, points):
+        self.ends = points
+        self.slope = (self.ends[1][1] - self.ends[0][1]) / (self.ends[1][0] - self.ends[0][0])
+        self.b = self.ends[1][1] - (self.slope * self.ends[1][0])
+
 
 
 if __name__ == "__main__":  

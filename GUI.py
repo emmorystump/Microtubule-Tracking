@@ -475,13 +475,12 @@ class Microtuble:
 
     def update_endpoints(self, points, photo_tracked):
 
-        max_square_distance = 0
         # max_pair = []
         points = np.transpose(points)
         points_mean = np.mean(points, axis=0)
         points_dist_diff = np.sum((points - points_mean)**2, axis=1)
         points_max_dist = [0, 0]
-        max_pair = [[0,0], [0,0]]
+        max_pair = [points[0], points[1]]
 
         for i in range(len(points_dist_diff)):
             if points[i][0] < points_mean[0]: # points on left side of mean point
