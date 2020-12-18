@@ -20,10 +20,11 @@ class App:
         
         self.window = window
         self.window.title(window_title)
-        self.window_height = 1000
-        self.window_width = 2000
+        self.window_height = 800
+        self.window_width = 1200
         self.video_source = video_source
 
+      
         self.title = tk.Label(window, text="Microtubule Tracker", font=("Courier", 30))
         self.title.pack(pady=4, padx=5)
 
@@ -118,25 +119,26 @@ class App:
         self.video_source = filedialog.askopenfilename()
         self.vid = SelectedVideo(self.video_source)
 
-        self.next_btn = Button(self.window, text="Next Frame", command=self.play_next_frame, relief="flat", bg="#696969", fg="gray", font=("Courier", 12),width=20, height=2)
-        self.next_btn.pack(pady=1, padx=5)
+        self.canvas = tk.Canvas(self.window, width = self.vid.width, height = self.vid.height)
+        self.canvas.pack(anchor=tk.NW, side=tk.RIGHT, pady=20, padx=180)
 
         self.play_btn = Button(self.window, text="Play", command=self.play_video, relief="flat", bg="#696969", fg="gray", font=("Courier", 12),width=20, height=2)
-        self.play_btn.pack(pady=1, padx=5)
+        self.play_btn.pack(pady=20, padx=50, anchor='w')
 
         self.pause_btn = Button(self.window, text="Pause", command=self.pause_video,  relief="flat", bg="#696969", fg="gray", font=("Courier", 12),width=20, height=2)
-        self.pause_btn.pack(pady=1, padx=10)
+        self.pause_btn.pack(pady=20, padx=50, anchor='w')
 
         self.pause_btn = Button(self.window, text="Reselect Endpoints", command=self.reselect_endpoints,  relief="flat", bg="#696969", fg="gray", font=("Courier", 12),width=20, height=2)
-        self.pause_btn.pack(pady=1, padx=10)
+        self.pause_btn.pack(pady=20, padx=50, anchor='w')
 
-        self.reset_btn = Button(self.window, text="Reset", command=self.reset,  relief="flat", bg="#696969", fg="gray", font=("Courier", 12),width=20, height=2)
-        self.reset_btn.pack(pady=1, padx=15)
+        self.next_btn = Button(self.window, text="Next Frame", command=self.play_next_frame, relief="flat", bg="#696969", fg="gray", font=("Courier", 12),width=20, height=2)
+        self.next_btn.pack(pady=20, padx=50, anchor='w')
 
-        self.canvas = tk.Canvas(self.window, width = self.vid.width, height = self.vid.height)
-        self.canvas.pack(pady=5, side=tk.LEFT)
+        self.reset_btn = Button(self.window, text="Restart Video", command=self.restart,  relief="flat", bg="#696969", fg="gray", font=("Courier", 12),width=20, height=2)
+        self.reset_btn.pack(pady=20, padx=50, anchor='w')
 
-        play_btn_window = self.canvas.create_window(10, 10, anchor=NW, window=self.play_btn)
+        
+
         # self.canvas_tracked = tk.Canvas(self.window, width = self.vid.width, height = self.vid.height)
         # self.canvas_tracked.pack(pady=5, padx=210, side=tk.LEFT)
         # self.canvas.pack()
@@ -273,7 +275,7 @@ class App:
 
         # Show a line with these computed ends
         self.photo_tracked = ImageTk.PhotoImage(image=Image.fromarray(segmented_photo_tracked))
-        self.canvas_tracked.create_image(0, 0, image=self.photo_tracked, anchor=tk.NW)
+        # self.canvas_tracked.create_image(0, 0, image=self.photo_tracked, anchor=tk.NW)
         self.canvas.create_line(computed_ends[0][0], computed_ends[0][1], computed_ends[1][0], computed_ends[1][1], fill="blue", width=3)
     
 
@@ -290,7 +292,7 @@ class App:
 
             # Create a circle on both canvases
             self.canvas.create_oval(event.x+5, event.y+5, event.x-5, event.y-5, fill="blue", outline="#DDD", width=1)
-            self.canvas_tracked.create_oval(event.x+5, event.y+5, event.x-5, event.y-5, fill="blue", outline="#DDD", width=1)
+            # self.canvas_tracked.create_oval(event.x+5, event.y+5, event.x-5, event.y-5, fill="blue", outline="#DDD", width=1)
 
 
             # If the user has now selected 2 points, do not allow them to select anymore
@@ -307,7 +309,7 @@ class App:
                 # Create a line on the canvas
                 print("in user select micro")
                 print(self.microtubule_ends)
-                self.canvas_tracked.create_line(self.x0, self.y0, self.x1, self.y1, fill="red", width=3)
+                # self.canvas_tracked.create_line(self.x0, self.y0, self.x1, self.y1, fill="red", width=3)
 
                 # Disallow user input
                 self.allow_user_input = False
@@ -328,7 +330,7 @@ class App:
                 
     def reset(self):
         self.canvas.destroy()
-        self.canvas_tracked.destroy()
+        # self.canvas_tracked.destroy()
         self.play_btn.destroy()
         self.pause_btn.destroy()
         self.reset_btn.destroy()
@@ -351,6 +353,21 @@ class App:
 
     def pause_video(self):           
         self.pause = True
+
+    
+    def restart(self):
+        self.vid = SelectedVideo(self.video_source)
+        self.first_frame = self.vid.get_frame()[1]
+        self.first_frame = self.process_frame(self.first_frame)   
+        self.photo = ImageTk.PhotoImage(image=self.first_frame)
+        self.canvas.create_image(0, 0, image=self.photo, anchor=tk.NW)
+        self.delay = 20
+        
+        self.allow_user_input = True
+        self.microtubule_ends = []
+        # Bind click event to selecting a microtubule
+        self.canvas.bind("<ButtonPress-1>", self.user_select_microtubule)
+
 
     def reselect_endpoints(self):
         self.pause = True
@@ -564,7 +581,7 @@ class Microtuble:
 
 if __name__ == "__main__":  
     root = tk.Tk()
-    root.geometry("2000x1000")
+    root.geometry("1200x800")
     App(root, "Test Video")
 
 
