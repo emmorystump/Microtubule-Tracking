@@ -84,12 +84,12 @@ class App:
                 self.canvas.create_oval(self.x1+5, self.y1+5, self.x1-5, self.y1-5, fill="blue", outline="#DDD", width=1)
 
                         
-                self.photo_tracked = self.photo_tracked.astype(np.uint8)
+                # self.photo_tracked = self.photo_tracked.astype(np.uint8)
 
-                self.photo_tracked[self.photo_tracked!=0] = 255
+                # self.photo_tracked[self.photo_tracked!=0] = 255
                 
-                self.photo_tracked = ImageTk.PhotoImage(image=Image.fromarray(self.photo_tracked))
-                self.canvas_tracked.create_image(0, 0, image=self.photo_tracked, anchor=tk.NW)
+                # self.photo_tracked = ImageTk.PhotoImage(image=Image.fromarray(self.photo_tracked))
+                # self.canvas_tracked.create_image(0, 0, image=self.photo_tracked, anchor=tk.NW)
 
                 self.vid.frame_counter += 1
                 print(self.vid.frame_counter)
@@ -113,10 +113,12 @@ class App:
         self.reset_btn.pack(pady=1, padx=15)
 
         self.canvas = tk.Canvas(self.window, width = self.vid.width, height = self.vid.height)
-        self.canvas.pack(pady=5, padx=200, side=tk.LEFT)
-        self.canvas_tracked = tk.Canvas(self.window, width = self.vid.width, height = self.vid.height)
-        self.canvas_tracked.pack(pady=5, padx=210, side=tk.LEFT)
-        self.canvas.pack()
+        self.canvas.pack(pady=5, side=tk.LEFT)
+
+        play_btn_window = self.canvas.create_window(10, 10, anchor=NW, window=self.play_btn)
+        # self.canvas_tracked = tk.Canvas(self.window, width = self.vid.width, height = self.vid.height)
+        # self.canvas_tracked.pack(pady=5, padx=210, side=tk.LEFT)
+        # self.canvas.pack()
         
         self.first_frame = self.vid.get_frame()[1]
         self.first_frame = self.process_frame(self.first_frame)
@@ -124,7 +126,7 @@ class App:
         self.photo = ImageTk.PhotoImage(image=self.first_frame)
 
         self.canvas.create_image(0, 0, image=self.photo, anchor=tk.NW)
-        self.canvas_tracked.create_image(0, 0, image=self.photo, anchor=tk.NW)
+        # self.canvas_tracked.create_image(0, 0, image=self.photo, anchor=tk.NW)
         self.delay = 20
 
         # Bind click event to selecting a microtubule
