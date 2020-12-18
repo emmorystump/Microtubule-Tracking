@@ -42,6 +42,7 @@ class App:
 
         self.pause = False
         self.reselect = False
+        self.uploaded = False
 
         self.nextFrame = False
         self.delay = 2000
@@ -115,43 +116,57 @@ class App:
     
     
     def show_file(self):
-        self.video_source = filedialog.askopenfilename()
+        self.video_source = filedialog.askopenfilename() 
         self.vid = SelectedVideo(self.video_source)
-        
-        self.canvas = tk.Canvas(self.window, width = self.vid.width, height = self.vid.height)
-        self.canvas.pack(anchor=tk.NW, side=tk.RIGHT, pady=20, padx=180)
 
-        self.play_btn = Button(self.window, text="Play", command=self.play_video, relief="flat", bg="#696969", fg="gray", font=("Courier", 12),width=20, height=2)
-        self.play_btn.pack(pady=20, padx=50, anchor='w')
+        # try:
+        #     self.video_source = filedialog.askopenfilename()        
+        # except Exception:
+        #     self.video_source = ""
+        #     pass
+       
+        if self.uploaded == False:
+            self.uploaded = True
 
-        self.pause_btn = Button(self.window, text="Pause", command=self.pause_video,  relief="flat", bg="#696969", fg="gray", font=("Courier", 12),width=20, height=2)
-        self.pause_btn.pack(pady=20, padx=50, anchor='w')
+            # if self.video_source != "":
+            #     self.video_source_copy = self.video_source
+            #     self.vid = SelectedVideo(self.video_source)
+            # else:
+            #     self.video_source = self.video_source_copy
+            #     self.vid = SelectedVideo(self.video_source)
 
-        self.pause_btn = Button(self.window, text="Reselect Endpoints", command=self.reselect_endpoints,  relief="flat", bg="#696969", fg="gray", font=("Courier", 12),width=20, height=2)
-        self.pause_btn.pack(pady=20, padx=50, anchor='w')
+            self.canvas = tk.Canvas(self.window, width = self.vid.width, height = self.vid.height)
+            self.canvas.pack(anchor=tk.NW, side=tk.RIGHT, pady=20, padx=180)
 
-        self.next_btn = Button(self.window, text="Next Frame", command=self.play_next_frame, relief="flat", bg="#696969", fg="gray", font=("Courier", 12),width=20, height=2)
-        self.next_btn.pack(pady=20, padx=50, anchor='w')
+            self.play_btn = Button(self.window, text="Play", command=self.play_video, relief="flat", bg="#696969", fg="gray", font=("Courier", 12),width=20, height=2)
+            self.play_btn.pack(pady=20, padx=50, anchor='w')
 
-        self.reset_btn = Button(self.window, text="Restart Video", command=self.restart,  relief="flat", bg="#696969", fg="gray", font=("Courier", 12),width=20, height=2)
-        self.reset_btn.pack(pady=20, padx=50, anchor='w')
+            self.pause_btn = Button(self.window, text="Pause", command=self.pause_video,  relief="flat", bg="#696969", fg="gray", font=("Courier", 12),width=20, height=2)
+            self.pause_btn.pack(pady=20, padx=50, anchor='w')
 
-        
-        # self.canvas_tracked = tk.Canvas(self.window, width = self.vid.width, height = self.vid.height)
-        # self.canvas_tracked.pack(pady=5, padx=210, side=tk.LEFT)
-        # self.canvas.pack()
-        
-        self.first_frame = self.vid.get_frame()[1]
-        self.first_frame = self.process_frame(self.first_frame)
-        
-        self.photo = ImageTk.PhotoImage(image=self.first_frame)
+            self.reselect_btn = Button(self.window, text="Reselect Endpoints", command=self.reselect_endpoints,  relief="flat", bg="#696969", fg="gray", font=("Courier", 12),width=20, height=2)
+            self.reselect_btn.pack(pady=20, padx=50, anchor='w')
 
-        self.canvas.create_image(0, 0, image=self.photo, anchor=tk.NW)
-        # self.canvas_tracked.create_image(0, 0, image=self.photo, anchor=tk.NW)
-        self.delay = 20
+            self.next_btn = Button(self.window, text="Next Frame", command=self.play_next_frame, relief="flat", bg="#696969", fg="gray", font=("Courier", 12),width=20, height=2)
+            self.next_btn.pack(pady=20, padx=50, anchor='w')
 
-        # Bind click event to selecting a microtubule
-        self.canvas.bind("<ButtonPress-1>", self.user_select_microtubule)
+            self.reset_btn = Button(self.window, text="Restart Video", command=self.restart,  relief="flat", bg="#696969", fg="gray", font=("Courier", 12),width=20, height=2)
+            self.reset_btn.pack(pady=20, padx=50, anchor='w')
+            
+            self.first_frame = self.vid.get_frame()[1]
+            self.first_frame = self.process_frame(self.first_frame)
+            
+            self.photo = ImageTk.PhotoImage(image=self.first_frame)
+
+            self.canvas.create_image(0, 0, image=self.photo, anchor=tk.NW)
+            # self.canvas_tracked.create_image(0, 0, image=self.photo, anchor=tk.NW)
+            self.delay = 20
+
+            # Bind click event to selecting a microtubule
+            self.canvas.bind("<ButtonPress-1>", self.user_select_microtubule)
+        else:
+
+            self.restart()
 
 
     def process_frame(self, frame):
@@ -190,7 +205,7 @@ class App:
     # Segment Microtubule
     def display_selected_microtubule(self, frame):
 
-                # FROM HERE
+        # FROM HERE
         frame = np.array(frame)
         frame = frame.astype(np.uint8)
 
@@ -361,6 +376,8 @@ class App:
         
         self.allow_user_input = True
         self.microtubule_ends = []
+        self.number_user_clicks = 0
+
         # Bind click event to selecting a microtubule
         self.canvas.bind("<ButtonPress-1>", self.user_select_microtubule)
 
