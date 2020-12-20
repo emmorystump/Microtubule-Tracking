@@ -102,7 +102,7 @@ class App:
                 self.photo_tracked = ImageTk.PhotoImage(image=Image.fromarray(self.photo_tracked))
 
                 self.vid.frame_counter += 1
-                print("Frame ",self.vid.frame_counter)
+                # print("Frame ",self.vid.frame_counter)
 
                 if self.reselect:
                     self.microtubule_ends = []
@@ -216,7 +216,9 @@ class App:
         _, label = cv2.connectedComponents(frame, connectivity=8)
 
         # If we have already analyzed the first frame, get the slope and b from microtubule
-        m = (self.y1-self.y0)/(self.x1-self.x0)
+        m = (self.y1-self.y0)/((self.x1-self.x0)+1e-9)
+        if m == 0:
+            m += 1e-9
         c = self.y0 - (m*self.x0)
 
         if self.vid.frame_counter > 0:
@@ -224,12 +226,16 @@ class App:
         
         maxRange = 2
 
-        x_range = np.arange(np.min([self.x0, self.x1]) + maxRange, np.max([self.x0, self.x1]) - maxRange, 2)
+        x_range = np.arange(np.min([self.x0, self.x1]) + maxRange, np.max([self.x0, self.x1]) - maxRange, 1)
+
+        if len(x_range) == 0:
+            x_range = [self.x0, self.x1]
 
         component_values = [label[x-maxRange: x+maxRange, math.floor(m*x+c)-maxRange:math.floor(m*x+c)+maxRange].max() for x in x_range]
         
         data = Counter(component_values)
         componentNumber = data.most_common(1)[0][0]
+
 
         # Set everything that is not this component number to be the background
         label[label != componentNumber] = 0
