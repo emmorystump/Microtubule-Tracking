@@ -1,5 +1,5 @@
 # Microtubule
-CSE554 Final Project: Tracking Microtubules
+CSE554 Final Project: Tracking Microtubules \
 Emmory Stump & Lisa Liao
 
 # How to Use
