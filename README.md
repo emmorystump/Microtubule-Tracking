@@ -1,5 +1,6 @@
 # Microtubule
-CSE554 Final Project
+CSE554 Final Project: Tracking Microtubules
+Emmory Stump & Lisa Liao
 
 # How to Use
 * Clone this repository
