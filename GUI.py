@@ -15,7 +15,7 @@ from collections import Counter
 
 # source: https://solarianprogrammer.com/2018/04/21/python-opencv-show-video-tkinter-window/
 class App:
-    def __init__(self, window, window_title, video_source='microtubule_videos/1380 nM SPR1GFP WT - 13_XY1500063595_Z0_T000_C1.tiff'):
+    def __init__(self, window, window_title, video_source=""):
         np.set_printoptions(threshold=np.inf)
         
         self.window = window
@@ -76,8 +76,6 @@ class App:
 
                 labeled = cv2.dilate(labeled, kernel, iterations = 1) 
 
-                # labeled = Image.fromarray(np.uint8(labeled))
-
 
                 # show image
                 self.photo = ImageTk.PhotoImage(image=frame)
@@ -86,7 +84,6 @@ class App:
                 # track the microtubule
                 self.photo_tracked, self.microtubule_ends, self.slope, self.b, didUpdate = self.microtubule.track(labeled)
                     
-                # Show endpoints and mid-sampling points
                 # Get the line ends 
                 self.x0 = self.microtubule_ends[0][0]
                 self.y0 = self.microtubule_ends[0][1]
@@ -103,10 +100,9 @@ class App:
                 self.photo_tracked[self.photo_tracked!=0] = 255
                 
                 self.photo_tracked = ImageTk.PhotoImage(image=Image.fromarray(self.photo_tracked))
-                # self.canvas_tracked.create_image(0, 0, image=self.photo_tracked, anchor=tk.NW)
 
                 self.vid.frame_counter += 1
-                print(self.vid.frame_counter)
+                print("Frame ",self.vid.frame_counter)
 
                 if self.reselect:
                     self.microtubule_ends = []
@@ -119,22 +115,10 @@ class App:
         self.video_source = filedialog.askopenfilename() 
         self.vid = SelectedVideo(self.video_source)
 
-        # try:
-        #     self.video_source = filedialog.askopenfilename()        
-        # except Exception:
-        #     self.video_source = ""
-        #     pass
-       
         if self.uploaded == False:
             self.uploaded = True
 
-            # if self.video_source != "":
-            #     self.video_source_copy = self.video_source
-            #     self.vid = SelectedVideo(self.video_source)
-            # else:
-            #     self.video_source = self.video_source_copy
-            #     self.vid = SelectedVideo(self.video_source)
-
+      
             self.canvas = tk.Canvas(self.window, width = self.vid.width, height = self.vid.height)
             self.canvas.pack(anchor=tk.NW, side=tk.RIGHT, pady=20, padx=180)
 
@@ -159,7 +143,6 @@ class App:
             self.photo = ImageTk.PhotoImage(image=self.first_frame)
 
             self.canvas.create_image(0, 0, image=self.photo, anchor=tk.NW)
-            # self.canvas_tracked.create_image(0, 0, image=self.photo, anchor=tk.NW)
             self.delay = 20
 
             # Bind click event to selecting a microtubule
@@ -174,9 +157,6 @@ class App:
         # Normalizing our image
         frame = frame/255
         frame[frame > 255] = 255
-
-        # Gaussian blur
-        # frame = cv2.GaussianBlur(frame,(5,5),5)
 
         # Convert to a type we can threshold with
         frame = frame.astype(np.uint8)
@@ -205,11 +185,8 @@ class App:
     # Segment Microtubule
     def display_selected_microtubule(self, frame):
 
-        # FROM HERE
         frame = np.array(frame)
         frame = frame.astype(np.uint8)
-
-        # frame = cv2.Canny(frame, 200, 100)
 
         frame = cv2.adaptiveThreshold(frame, frame.max(), cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 9, -1)
 
@@ -226,8 +203,6 @@ class App:
         frame = cv2.morphologyEx(frame, cv2.MORPH_OPEN, kernel)
 
         frame = frame.astype(np.uint8)
-
-        #tp here PLACE BACK IN DISPLAY
 
         # Get the line ends 
         self.x0 = self.microtubule_ends[0][0]
@@ -315,14 +290,6 @@ class App:
                 self.x1 = self.microtubule_ends[0][0]
                 self.y1 = self.microtubule_ends[1][1]
 
-                print("user selected points:")
-                print(self.microtubule_ends)
-
-                # Create a line on the canvas
-                print("in user select micro")
-                print(self.microtubule_ends)
-                # self.canvas_tracked.create_line(self.x0, self.y0, self.x1, self.y1, fill="red", width=3)
-
                 # Disallow user input
                 self.allow_user_input = False
 
@@ -342,7 +309,6 @@ class App:
                 
     def reset(self):
         self.canvas.destroy()
-        # self.canvas_tracked.destroy()
         self.play_btn.destroy()
         self.pause_btn.destroy()
         self.reset_btn.destroy()
@@ -359,7 +325,6 @@ class App:
                 self.update()
     
     def play_next_frame(self):
-        # self.nextFrame = True
         self.pause = True
         self.update()
 
@@ -447,29 +412,12 @@ class Microtuble:
 
         plt.figure(figsize=(9, 3))
         plt.plot(x_length, y_length)
-        # plt.plot(x_length, y_length_projection)
         plt.gca().set_ylim(ymin=0)
         plt.gca().set_xlim(xmin=0)
 
         plt.ylabel("Distance Between Endpoints (Euclidean)")
         plt.title("Length versus Frame")
         
-        # Create our rate graph
-        # x_rate = list(range(1, lenEnds))
-        # y_rate = self.roc(y_length)
-
-
-        # m, c = np.polyfit(x_rate, y_rate, 1)
-        # y_rate_projection = [m*x+c for x in x_rate]
-
-
-        # plt.figure(figsize=(9, 3))
-        # plt.plot(x_rate, y_rate, "ro")
-        # plt.plot(x_rate, y_rate_projection)
-
-        # plt.ylabel("Rate of Change Between Endpoints (Percentage)")
-        # plt.title("Rate of Change")
-
         plt.show()
 
 
@@ -536,7 +484,6 @@ class Microtuble:
     def update_endpoints(self, points, photo_tracked):
 
         max_square_distance = 0
-        # max_pair = []
         points = np.transpose(points)
         points_mean = np.mean(points, axis=0)
         points_dist_diff = np.sum((points - points_mean)**2, axis=1)
@@ -548,7 +495,7 @@ class Microtuble:
                 if points_max_dist[0] < points_dist_diff[i]:
                     points_max_dist[0] = points_dist_diff[i]
                     max_pair[0] = points[i]
-            elif points[i][0] > points_mean[0]:
+            elif points[i][0] > points_mean[0]: # points on right side of mean point
                 if points_max_dist[1] < points_dist_diff[i]:
                     points_max_dist[1] = points_dist_diff[i]
                     max_pair[1] = points[i]
@@ -566,9 +513,6 @@ class Microtuble:
 
 
         return False
-
- 
-
 
     # https://stackoverflow.com/questions/31667070/max-distance-between-2-points-in-a-data-set-and-identifying-the-points
     def square_distance(self,x,y): 
