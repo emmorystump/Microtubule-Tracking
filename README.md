@@ -20,7 +20,7 @@ CSE554 Final Project
 
 
 
-Implemented Features:
+# Implemented Features:
 * Allow a user to upload a video
 * Ability to select a microtubule which the user would like to track by clicking on both ends of the microtubule
 * Segment the selected microtubule in each frame of the video and shown as a binary mask.
