@@ -1,28 +1,29 @@
 # Microtubule
 CSE554 Final Project
 
-Notes:
-* PIL & OpenCV for manipulating TIFF
-* GUI CLass
-    * Tkinter Library 
-    * Display the first image for user to click
-* DataLoader Class
-* TrackMicrotubuleAlg Class
-    * collect the array of new tiff images (edited to highlight the microtubule) and return them to the GUI for it to display
+# How to Use
+* Clone this repository
+* Be sure to have access to the following frameworks
+   * Tkinter
+   * PIL
+   * OpenCV
+   * Sklearn
+   * Scipy
+   * NumPy
+   * TiffCaputure
+
+* Run "python GUI.py" to load our GUI
+* Press "Load Data" and select a dataset to load
+* Select BOTH ends of microtubule
+   * You will see that this has been done when a line of best fit appears
+* Press "Play" in order to track the Microtubule
 
 
 
-Required Features:
+Implemented Features:
 * Allow a user to upload a video
 * Ability to select a microtubule which the user would like to track by clicking on both ends of the microtubule
 * Segment the selected microtubule in each frame of the video and shown as a binary mask.
 * Dynamically track the length of the microtubule and plot it against time
-* Dynamically track the duration and rates of the growth and shrinking events of microtubules.
 * If the algorithm gets lost (possibly at the intersection of microtubules) prompt the user to select another point on the microtubule - should only need for hard problems
 * All of the above features should be displayed in a GUI
-
-Wishlist Features:
-* Track 2 microtubules at the same time and display comparison of growth and shrinkage events
-* Have user only need to click one spot on microtubule to begin tracking
-* For hard problems with a higher number of overlapping microtubules, infer the shape of the selected microtubule and automatically resume tracking.
-
