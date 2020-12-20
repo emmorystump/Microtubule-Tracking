@@ -28,3 +28,5 @@ Emmory Stump & Lisa Liao
 * Dynamically track the length of the microtubule and plot it against time
 * If the algorithm gets lost (possibly at the intersection of microtubules) prompt the user to select another point on the microtubule - should only need for hard problems
 * All of the above features should be displayed in a GUI
+
+To read more about our implementation, please read FinalProjectReport.pdf which is located in the repository.
